@@ -1,10 +1,11 @@
-# .github/workflows/aegis-qa.yml
-
 name: 'Aegis AI QA Review'
 
 on:
   pull_request:
     types: [opened, synchronize]
+
+permissions:
+  pull-requests: write
 
 jobs:
   analyze:
@@ -14,14 +15,41 @@ jobs:
       - name: 'Check out code'
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Fetches all history for all branches and tags
+          repository: 'dontaruffin/aegis-backend'
+          fetch-depth: 0
 
-      # We will add steps here to get the diff and call the API
-	- name: 'Get git diff'
-		id: get_diff
-		run: |
-		  echo "PR Diff:"
-		  git diff ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} -- > pr.diff
-		  echo "DIFF_CONTENT<<EOF" >> $GITHUB_ENV
-		  cat pr.diff >> $GITHUB_ENV
-		  echo "EOF" >> $GITHUB_ENV	
+      - name: 'Get git diff'
+        id: get_diff
+        run: |
+          git diff ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} -- > pr.diff
+          echo "DIFF_CONTENT<<EOF" >> $GITHUB_ENV
+          cat pr.diff >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: 'Call Aegis API'
+        id: call_api
+        run: |
+          JSON_PAYLOAD=$(jq -n --arg diff "$DIFF_CONTENT" '{"diff": $diff}')
+          API_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
+          -d "$JSON_PAYLOAD" \
+          ${{ secrets.AEGIS_API_URL }})
+          echo "comment_body=$API_RESPONSE" >> $GITHUB_OUTPUT
+      
+      - name: 'Post AI Review Comment'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ### 🛡️ Aegis AI Review
+
+            **Summary:** ${{ fromJson(steps.call_api.outputs.comment_body).summary }}
+            ---
+            #### 🤔 Suggested Edge Cases
+            - ${{ fromJson(steps.call_api.outputs.comment_body).edgeCases[0] }}
+            - ${{ fromJson(steps.call_api.outputs.comment_body).edgeCases[1] }}
+            ---
+            #### 🧪 Generated Unit Tests
+            *Suggested File Path: `${{ fromJson(steps.call_api.outputs.comment_body).unitTests.filePath }}`*
+            ```${{ fromJson(steps.call_api.outputs.comment_body).unitTests.language }}
+            ${{ fromJson(steps.call_api.outputs.comment_body).unitTests.code }}
+            ```
