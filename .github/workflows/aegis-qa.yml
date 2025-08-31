@@ -17,3 +17,11 @@ jobs:
           fetch-depth: 0 # Fetches all history for all branches and tags
 
       # We will add steps here to get the diff and call the API
+	- name: 'Get git diff'
+		id: get_diff
+		run: |
+		  echo "PR Diff:"
+		  git diff ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} -- > pr.diff
+		  echo "DIFF_CONTENT<<EOF" >> $GITHUB_ENV
+		  cat pr.diff >> $GITHUB_ENV
+		  echo "EOF" >> $GITHUB_ENV	
