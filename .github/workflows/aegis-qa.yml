@@ -17,7 +17,7 @@ jobs:
           fetch-depth: 0 # Fetches all history for all branches and tags
 
       # We will add steps here to get the diff and call the API
-	- name: 'Get git diff'
+	  - name: 'Get git diff'
 		id: get_diff
 		run: |
 		  echo "PR Diff:"
