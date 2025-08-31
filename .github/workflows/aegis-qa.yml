@@ -1,0 +1,19 @@
+# .github/workflows/aegis-qa.yml
+
+name: 'Aegis AI QA Review'
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  analyze:
+    name: Analyze Code Changes
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Check out code'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetches all history for all branches and tags
+
+      # We will add steps here to get the diff and call the API
