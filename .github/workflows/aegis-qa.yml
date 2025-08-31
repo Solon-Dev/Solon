@@ -14,7 +14,8 @@ jobs:
       - name: 'Check out code'
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Fetches all history for all branches and tags
+          repository: 'dontaruffin/aegis-backend'
+		  fetch-depth: 0 # Fetches all history for all branches and tags
 
       # We will add steps here to get the diff and call the API
 	  - name: 'Get git diff'
