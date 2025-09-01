@@ -1,39 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Aegis QA 🛡️
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/DontaRuffin/aegis-backend/actions)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue)](https://github.com/DontaRuffin/aegis-backend)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Getting Started
+> Your AI-powered QA engineer for every pull request. Stop nitpicking, start merging.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Aegis is a GitHub App that uses large language models to automate the most tedious parts of code review. It acts as an intelligent, automated QA engineer that analyzes every pull request, helping your team ship higher-quality code, faster.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## ✨ Features
 
-## Learn More
+* **🤖 AI-Generated Summaries:** Get a plain-English summary of the changes in every PR, making it easier to understand the intent at a glance.
+* **🤔 Edge Case Detection:** Aegis suggests potential edge cases and blind spots in your logic, prompting you to consider scenarios you might have missed.
+* **🧪 Unit Test Generation:** Get boilerplate unit tests for your new logic, written in your project's testing framework. Copy, paste, and accelerate your test-driven development.
 
-To learn more about Next.js, take a look at the following resources:
+## 🚀 How it Works
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-  
+1.  **Install the App:** Install the Aegis GitHub App on your repositories from the GitHub Marketplace.
+2.  **Open a Pull Request:** Work as you normally would. When you open a PR, Aegis gets to work.
+3.  **Get Instant Feedback:** Within moments, Aegis will post a formatted, detailed analysis as a comment directly on your pull request.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## ⚙️ Installation
 
-## Deploy on Vercel
+The easiest way to get started is by installing Aegis from the official GitHub Marketplace.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+**➡️ [Install Aegis from the GitHub Marketplace](https://github.com/marketplace/aegis-qa)** *(This link will be live once you submit the app to the marketplace)*
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🔧 Configuration
 
-Test V1 feature
+For advanced configuration, you can add an `.aegis.yml` file to the root of your repository. *(Configuration options are planned for future versions)*
+
+## 💬 Support & Feedback
+
+Have a bug report or a feature request? Please **[open an issue](https://github.com/DontaRuffin/aegis-backend/issues)** on this repository! Your feedback is critical to making Aegis better.
+
+## 📜 License
+
+This project is licensed under the MIT License - see the `LICENSE` file for details.
