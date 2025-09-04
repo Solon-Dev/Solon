@@ -1,4 +1,4 @@
-name: 'Aegis AI QA Review'
+name: 'Solon AI QA Review'
 
 on:
   pull_request:
@@ -26,7 +26,7 @@ jobs:
           cat pr.diff >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
-      - name: 'Call Aegis API'
+      - name: 'Call Solon API'
         id: call_api
         run: |
           JSON_PAYLOAD=$(jq -n --arg diff "$DIFF_CONTENT" '{"diff": $diff}')
@@ -40,7 +40,7 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            ### 🛡️ Aegis AI Review
+            ### 🛡️ Solon AI Review
 
             **Summary:** ${{ fromJson(steps.call_api.outputs.comment_body).summary }}
             ---

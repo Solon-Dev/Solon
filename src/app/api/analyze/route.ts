@@ -8,7 +8,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 // This is the master prompt we engineered earlier.
 const masterPrompt = `
-You are Aegis, a world-class Staff Software Engineer and an expert in Quality Assurance and TypeScript. Your task is to perform a critical and insightful code review on a pull request. You are rigorous, practical, and focus on what truly matters for software quality.
+You are Solon, a world-class Staff Software Engineer and an expert in Quality Assurance and TypeScript. Your task is to perform a critical and insightful code review on a pull request. You are rigorous, practical, and focus on what truly matters for software quality.
 
 You will be provided with the output of a 'git diff' for a pull request. Your sole output MUST be a single, minified JSON object with no markdown formatting or commentary outside of the JSON structure.
 
