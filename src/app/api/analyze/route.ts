@@ -65,19 +65,17 @@ async function callGemini(diff: string) {
     // 4. Get the response text
     const responseText = response.text();
     
-    // 5. Clean and parse the JSON
-    // The model might wrap the JSON in ```json ... ```, so we clean it.
-    // This is the new, robust code
-const firstBrace = responseText.indexOf('{');
-const lastBrace = responseText.lastIndexOf('}');
+    // 5. Clean and parse the JSON from the markdown code block
+    const jsonRegex = /```json\s*([\s\S]*?)\s*```/;
+    const match = responseText.match(jsonRegex);
 
-if (firstBrace === -1 || lastBrace === -1) {
-  throw new Error("No valid JSON object found in the AI response.");
-}
+    if (!match || !match[1]) {
+      throw new Error("No valid JSON code block found in the AI response.");
+    }
 
-const jsonSubstring = responseText.substring(firstBrace, lastBrace + 1);
-const parsedJson = JSON.parse(jsonSubstring);
-    
+    const jsonString = match[1];
+    const parsedJson = JSON.parse(jsonString);
+
     return parsedJson;
 
   } catch (error) {
