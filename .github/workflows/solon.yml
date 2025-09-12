@@ -15,7 +15,7 @@ jobs:
       - name: 'Check out code'
         uses: actions/checkout@v4
         with:
-          repository: 'dontaruffin/aegis-backend'
+          repository: 'dontaruffin/Solon-Dev/solon'
           fetch-depth: 0
 
       - name: 'Get git diff'
