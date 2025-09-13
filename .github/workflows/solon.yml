@@ -33,21 +33,43 @@ jobs:
           ${{ secrets.SOLON_API_URL }})
           echo "comment_body=$API_RESPONSE" >> $GITHUB_OUTPUT
       
+      - name: 'Prepare Comment Body'
+        id: prepare_comment
+        run: |
+          {
+            echo 'comment_body<<EOF'
+            echo '### 🛡️ Solon AI Review'
+            echo ''
+            summary=$(jq -r '.summary // "No summary provided."' <<< '${{ steps.call_api.outputs.comment_body }}')
+            echo "**Summary:** $summary"
+            echo ''
+            echo '---'
+            echo ''
+            edge_cases=$(jq -c '.edgeCases // []' <<< '${{ steps.call_api.outputs.comment_body }}')
+            if [ "$(jq 'length' <<< "$edge_cases")" -gt 0 ]; then
+              echo '#### 🤔 Suggested Edge Cases'
+              jq -r '.[]' <<< "$edge_cases" | while read -r line; do echo "- $line"; done
+              echo ''
+              echo '---'
+              echo ''
+            fi
+
+            unit_tests=$(jq -c '.unitTests // null' <<< '${{ steps.call_api.outputs.comment_body }}')
+            if [ "$unit_tests" != "null" ]; then
+              echo '#### 🧪 Generated Unit Tests'
+              file_path=$(jq -r '.filePath // "No file path provided."' <<< "$unit_tests")
+              language=$(jq -r '.language // ""' <<< "$unit_tests")
+              code=$(jq -r '.code // "No code provided."' <<< "$unit_tests")
+              echo "*Suggested File Path: \`$file_path\`*"
+              echo "\`\`\`$language"
+              echo "$code"
+              echo "\`\`\`"
+            fi
+            echo 'EOF'
+          } >> $GITHUB_OUTPUT
+
       - name: 'Post AI Review Comment'
         uses: peter-evans/create-or-update-comment@v4
         with:
           issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            ### 🛡️ Solon AI Review
-
-            **Summary:** ${{ fromJson(steps.call_api.outputs.comment_body).summary }}
-            ---
-            #### 🤔 Suggested Edge Cases
-            - ${{ fromJson(steps.call_api.outputs.comment_body).edgeCases[0] }}
-            - ${{ fromJson(steps.call_api.outputs.comment_body).edgeCases[1] }}
-            ---
-            #### 🧪 Generated Unit Tests
-            *Suggested File Path: `${{ fromJson(steps.call_api.outputs.comment_body).unitTests.filePath }}`*
-            ```${{ fromJson(steps.call_api.outputs.comment_body).unitTests.language }}
-            ${{ fromJson(steps.call_api.outputs.comment_body).unitTests.code }}
-            ```
+          body: ${{ steps.prepare_comment.outputs.comment_body }}
