@@ -18,17 +18,16 @@ jobs:
           fetch-depth: 0
 
       - name: 'Get git diff'
+        uses: technote-space/get-diff-action@v6
         id: get_diff
-        run: |
-          git diff ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} -- > pr.diff
-          echo "DIFF_CONTENT<<EOF" >> $GITHUB_ENV
-          cat pr.diff >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+        with:
+          PATTERNS: |
+            **/**
 
       - name: 'Call Solon API'
         id: call_api
         run: |
-          JSON_PAYLOAD=$(jq -n --arg diff "$DIFF_CONTENT" '{"diff": $diff}')
+          JSON_PAYLOAD=$(jq -n --arg diff "${{ steps.get_diff.outputs.diff }}" '{"diff": $diff}')
           API_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
           -d "$JSON_PAYLOAD" \
           ${{ secrets.SOLON_API_URL }})
