@@ -1,8 +1,7 @@
 name: 'Solon AI QA Review'
-
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, reopened]
 
 permissions:
   pull-requests: write
@@ -13,56 +12,95 @@ jobs:
     name: Analyze Code Changes
     runs-on: ubuntu-latest
     steps:
-      - name: 'Check out code'
+      - name: 'Check out PR branch'
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
+          ref: ${{ github.event.pull_request.head.sha }}
+          
+      - name: 'Fetch base branch'
+        run: |
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          
       - name: 'Get git diff'
         id: get_diff
         run: |
-          # Grab the diff between base and head
-          DIFF_CONTENT=$(git diff ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }})
-          # Encode it safely as JSON string
-          DIFF_JSON=$(jq -Rs . <<< "$DIFF_CONTENT")
-          echo "diff=$DIFF_JSON" >> $GITHUB_OUTPUT
-
+          # Create diff between base and head
+          git diff origin/${{ github.event.pull_request.base.ref }}...${{ github.event.pull_request.head.sha }} > pr.diff
+          
+          # Check if diff is empty
+          if [ ! -s pr.diff ]; then
+            echo "No changes detected in the pull request"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # Store diff content for API call
+          echo "has_changes=true" >> $GITHUB_OUTPUT
+          echo "DIFF_CONTENT<<EOF" >> $GITHUB_ENV
+          cat pr.diff >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          
       - name: 'Call Solon API'
+        if: steps.get_diff.outputs.has_changes == 'true'
         id: call_api
         run: |
-          JSON_PAYLOAD=$(jq -n --arg diff "${{ steps.get_diff.outputs.diff }}" '{"diff": $diff}')
-          echo "Sending payload to Solon API..."
-          echo "$JSON_PAYLOAD" | jq .
+          # Prepare JSON payload with proper escaping
+          JSON_PAYLOAD=$(jq -n --arg diff "$DIFF_CONTENT" '{"diff": $diff}')
           
-          API_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
+          # Call API with error handling
+          API_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.SOLON_API_TOKEN }}" \
             -d "$JSON_PAYLOAD" \
-            ${{ secrets.SOLON_API_URL }})
-
-          echo "Raw API response:"
-          echo "$API_RESPONSE"
-
-          # Save API response as output
-          echo "comment_body=$API_RESPONSE" >> $GITHUB_OUTPUT
-
-      - name: 'Post AI Review Comment'
-        uses: peter-evans/create-comment@v3
+            "${{ secrets.SOLON_API_URL }}")
+          
+          # Extract response body and status code
+          HTTP_CODE=$(echo "$API_RESPONSE" | tail -n 1)
+          RESPONSE_BODY=$(echo "$API_RESPONSE" | head -n -1)
+          
+          # Check for API errors
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "API call failed with status code: $HTTP_CODE"
+            echo "Response: $RESPONSE_BODY"
+            exit 1
+          fi
+          
+          # Save response for next step
+          echo "comment_body<<EOF" >> $GITHUB_OUTPUT
+          echo "$RESPONSE_BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: 'Generate GitHub App Token'
+        if: steps.get_diff.outputs.has_changes == 'true'
+        id: generate_token
+        uses: actions/create-github-app-token@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          app-id: ${{ secrets.SOLON_APP_ID }}
+          private-key: ${{ secrets.SOLON_PRIVATE_KEY }}
+          
+      - name: 'Post AI Review Comment'
+        if: steps.get_diff.outputs.has_changes == 'true'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ steps.generate_token.outputs.token }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             ### 🛡️ Solon AI Review
-
-            **Summary:** ${{ fromJson(steps.call_api.outputs.comment_body).summary }}
-
+            
+            ${{ fromJson(steps.call_api.outputs.comment_body).summary && format('**Summary:** {0}', fromJson(steps.call_api.outputs.comment_body).summary) || '**Summary:** Analysis complete' }}
+            
             ---
+            
             #### 🤔 Suggested Edge Cases
-            - ${{ fromJson(steps.call_api.outputs.comment_body).edgeCases[0] }}
-            - ${{ fromJson(steps.call_api.outputs.comment_body).edgeCases[1] }}
-
+            ${{ fromJson(steps.call_api.outputs.comment_body).edgeCases[0] && format('- {0}', fromJson(steps.call_api.outputs.comment_body).edgeCases[0]) || '- No edge cases identified' }}
+            ${{ fromJson(steps.call_api.outputs.comment_body).edgeCases[1] && format('- {0}', fromJson(steps.call_api.outputs.comment_body).edgeCases[1]) || '' }}
+            
             ---
+            
             #### 🧪 Generated Unit Tests
-            *Suggested File Path:* `${{ fromJson(steps.call_api.outputs.comment_body).unitTests.filePath }}`
-
-            \`\`\`${{ fromJson(steps.call_api.outputs.comment_body).unitTests.language }}
-            ${{ fromJson(steps.call_api.outputs.comment_body).unitTests.code }}
-            \`\`\`
+            ${{ fromJson(steps.call_api.outputs.comment_body).unitTests.filePath && format('*Suggested File Path:* `{0}`', fromJson(steps.call_api.outputs.comment_body).unitTests.filePath) || '*Suggested File Path:* `tests/test_main.ts`' }}
+            
+            ```${{ fromJson(steps.call_api.outputs.comment_body).unitTests.language || 'typescript' }}
+            ${{ fromJson(steps.call_api.outputs.comment_body).unitTests.code || '// No unit tests generated' }}
+            ```
