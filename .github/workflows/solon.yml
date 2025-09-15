@@ -21,37 +21,48 @@ jobs:
       - name: 'Get git diff'
         id: get_diff
         run: |
-          git diff ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} -- > pr.diff
-          echo "DIFF_CONTENT<<EOF" >> $GITHUB_ENV
-          cat pr.diff >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          # Grab the diff between base and head
+          DIFF_CONTENT=$(git diff ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }})
+          # Encode it safely as JSON string
+          DIFF_JSON=$(jq -Rs . <<< "$DIFF_CONTENT")
+          echo "diff=$DIFF_JSON" >> $GITHUB_OUTPUT
 
       - name: 'Call Solon API'
         id: call_api
         run: |
-          JSON_PAYLOAD=$(jq -n --arg diff "$DIFF_CONTENT" '{"diff": $diff}')
+          JSON_PAYLOAD=$(jq -n --arg diff "${{ steps.get_diff.outputs.diff }}" '{"diff": $diff}')
+          echo "Sending payload to Solon API..."
+          echo "$JSON_PAYLOAD" | jq .
+          
           API_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
-          -d "$JSON_PAYLOAD" \
-          ${{ secrets.SOLON_API_URL }})
+            -d "$JSON_PAYLOAD" \
+            ${{ secrets.SOLON_API_URL }})
+
+          echo "Raw API response:"
+          echo "$API_RESPONSE"
+
+          # Save API response as output
           echo "comment_body=$API_RESPONSE" >> $GITHUB_OUTPUT
-      
+
       - name: 'Post AI Review Comment'
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-comment@v3
         with:
-          app-id: ${{ secrets.SOLON_APP_ID }}
-          private-key: ${{ secrets.SOLON_PRIVATE_KEY }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             ### 🛡️ Solon AI Review
 
             **Summary:** ${{ fromJson(steps.call_api.outputs.comment_body).summary }}
+
             ---
             #### 🤔 Suggested Edge Cases
             - ${{ fromJson(steps.call_api.outputs.comment_body).edgeCases[0] }}
             - ${{ fromJson(steps.call_api.outputs.comment_body).edgeCases[1] }}
+
             ---
             #### 🧪 Generated Unit Tests
-            *Suggested File Path: `${{ fromJson(steps.call_api.outputs.comment_body).unitTests.filePath }}`*
-            ```${{ fromJson(steps.call_api.outputs.comment_body).unitTests.language }}
+            *Suggested File Path:* `${{ fromJson(steps.call_api.outputs.comment_body).unitTests.filePath }}`
+
+            \`\`\`${{ fromJson(steps.call_api.outputs.comment_body).unitTests.language }}
             ${{ fromJson(steps.call_api.outputs.comment_body).unitTests.code }}
-            ```
+            \`\`\`
