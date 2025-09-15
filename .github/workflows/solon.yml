@@ -38,6 +38,8 @@ jobs:
       - name: 'Post AI Review Comment'
         uses: peter-evans/create-or-update-comment@v4
         with:
+          app-id: ${{ secrets.SOLON_APP_ID }}
+          private-key: ${{ secrets.SOLON_PRIVATE_KEY }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             ### 🛡️ Solon AI Review
