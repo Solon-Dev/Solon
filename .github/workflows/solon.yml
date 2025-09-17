@@ -50,7 +50,7 @@ jobs:
       - name: 'Call Solon API'
         id: call_api
         run: |
-          JSON_PAYLOAD=$(jq -n --arg diff "$DIFF_CONTENT" '{"diff": $diff}')
+          JSON_PAYLOAD=$(cat pr.diff | jq -R -s '{diff: .}')
           API_RESPONSE=$(curl -s -w "%{http_code}" \
             --max-time 60 \
             -X POST \
