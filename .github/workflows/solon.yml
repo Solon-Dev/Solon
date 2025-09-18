@@ -5,72 +5,135 @@ on:
     types: [opened, synchronize]
 
 permissions:
-  pull-requests: write
   contents: read
+  pull-requests: write
+
+env:
+  MAX_DIFF_SIZE: 200000
+  MAX_API_TIMEOUT: 45
+  SAFE_EOF_DELIMITER: 'SOLON_SECURE_EOF_$(date +%s)_$(openssl rand -hex 8)'
 
 jobs:
   analyze:
     name: Analyze Code Changes
     runs-on: ubuntu-latest
+    timeout-minutes: 8
+
     steps:
-      - name: 'Generate GitHub App Token'
+      - name: 'Secure checkout'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          token: ${{ github.token }}
+          persist-credentials: false
+          clean: true
+
+      - name: 'Generate scoped GitHub App token'
         id: app-token
         uses: actions/create-github-app-token@v1
         with:
           app-id: ${{ secrets.SOLON_APP_ID }}
           private-key: ${{ secrets.SOLON_PRIVATE_KEY }}
-
-      - name: 'Check out code'
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+          repositories: ${{ github.repository }}
 
       - name: 'Find existing Solon comment'
         uses: peter-evans/find-comment@v3
         id: find-comment
         with:
+          token: ${{ steps.app-token.outputs.token }}
           issue-number: ${{ github.event.pull_request.number }}
-          comment-author: 'solon-ai[bot]' # <-- FIX 1: Correct author name
+          comment-author: 'solon-ai[bot]' # <-- THE FINAL FIX
           body-includes: '🛡️ Solon AI Review'
+          direction: last
 
-      - name: 'Get git diff'
+      - name: 'Validate PR context'
+        id: validate
+        run: |
+          if ! [[ "${{ github.event.pull_request.base.sha }}" =~ ^[a-f0-9]{40}$ ]]; then echo "❌ Invalid base SHA format"; exit 1; fi
+          if ! [[ "${{ github.event.pull_request.head.sha }}" =~ ^[a-f0-9]{40}$ ]]; then echo "❌ Invalid head SHA format"; exit 1; fi
+          echo "✅ PR context validated"
+          echo "base_sha=${{ github.event.pull_request.base.sha }}" >> $GITHUB_OUTPUT
+          echo "head_sha=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
+
+      - name: 'Generate secure git diff'
         id: get_diff
+        env:
+          BASE_SHA: ${{ steps.validate.outputs.base_sha }}
+          HEAD_SHA: ${{ steps.validate.outputs.head_sha }}
         run: |
-          git diff ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} --diff-filter=d --no-renames --text -- ':(exclude)*.lock' ':(exclude)*.min.*' > pr.diff
-          DIFF_SIZE=$(wc -c < pr.diff)
-          if [ "$DIFF_SIZE" -gt 200000 ]; then
-            echo "Diff too large, truncating..."
-            head -c 200000 pr.diff > pr_truncated.diff
-            mv pr_truncated.diff pr.diff
+          set -euo pipefail
+          {
+            git diff --no-ext-diff --unified=3 --no-color --no-renames --diff-filter=AM --ignore-all-space --text "${BASE_SHA}" "${HEAD_SHA}" -- ':(exclude)*.lock' ':(exclude)*.log' ':(exclude)*.tmp' ':(exclude)*.cache' ':(exclude)*.min.*' ':(exclude)*.map' ':(exclude)*.jpg' ':(exclude)*.jpeg' ':(exclude)*.png' ':(exclude)*.gif' ':(exclude)*.svg' ':(exclude)*.ico' ':(exclude)*.pdf' ':(exclude)*.zip' ':(exclude)*.tar.gz' ':(exclude)*.exe' ':(exclude)*.dll' ':(exclude)*.so' ':(exclude)*.dylib' ':(exclude)go.sum' ':(exclude)*.pb.go' ':(exclude)*.generated.*' ':(exclude)*_test.go' ':(exclude)*_spec.rb' ':(exclude)*.test.js' ':(exclude)*.spec.js' 2>/dev/null || echo "# No meaningful changes detected"
+          } > "pr_raw.diff"
+          
+          DIFF_SIZE=$(wc -c < "pr_raw.diff" 2>/dev/null || echo "0")
+          if [ "$DIFF_SIZE" -gt "$MAX_DIFF_SIZE" ]; then
+            echo "⚠️ Diff too large (${DIFF_SIZE} bytes), truncating..."
+            head -c "$MAX_DIFF_SIZE" "pr_raw.diff" > "pr_truncated.diff"
+            echo -e "\n\n# [TRUNCATED: Diff was ${DIFF_SIZE} bytes, showing first ${MAX_DIFF_SIZE} bytes]" >> "pr_truncated.diff"
+            mv "pr_truncated.diff" "pr_raw.diff"
           fi
-          echo 'DIFF_CONTENT<<EOF' >> $GITHUB_ENV
-          cat pr.diff >> $GITHUB_ENV
-          echo 'EOF' >> $GITHUB_ENV
+          
+          sed 's/`/\\`/g; s/\$/\\$/g; s/"/\\"/g' "pr_raw.diff" > "pr_safe.diff"
+          
+          {
+            echo "DIFF_CONTENT<<${SAFE_EOF_DELIMITER}"
+            cat "pr_safe.diff"
+            echo "${SAFE_EOF_DELIMITER}"
+          } >> "$GITHUB_ENV"
+          
+          echo "diff_size=${DIFF_SIZE}" >> $GITHUB_OUTPUT
+          echo "✅ Secure diff generated (${DIFF_SIZE} bytes)"
 
-      - name: 'Call Solon API'
+      - name: 'Secure Solon API call'
         id: call_api
+        timeout-minutes: 2
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO_NAME: ${{ github.repository }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
-          JSON_PAYLOAD=$(cat pr.diff | jq -R -s '{diff: .}')
-          API_RESPONSE=$(curl -s -w "%{http_code}" \
-            --max-time 60 \
-            -X POST \
-            -H "Content-Type: application/json" \
-            -d "$JSON_PAYLOAD" \
-            "${{ secrets.SOLON_API_URL }}") # <-- FIX 2: Removed incorrect auth header
+          set -euo pipefail
           
-          HTTP_CODE="${API_RESPONSE: -3}"
-          RESPONSE_BODY="${API_RESPONSE%???}"
+          if [[ ! "${{ secrets.SOLON_API_URL }}" =~ ^https:// ]]; then echo "❌ API URL must use HTTPS"; exit 1; fi
           
-          if [ "$HTTP_CODE" = "200" ]; then
-            echo "Final JSON response: $RESPONSE_BODY"
-            echo "comment_body=$RESPONSE_BODY" >> $GITHUB_OUTPUT
+          SAFE_PAYLOAD=$(jq -nc --arg diff "$DIFF_CONTENT" --arg pr_number "$PR_NUMBER" --arg repository "$REPO_NAME" --arg title "$PR_TITLE" --arg author "$PR_AUTHOR" '{ "diff": $diff, "metadata": { "pr_number": ($pr_number | tonumber), "repository": $repository, "title": $title, "author": $author, "timestamp": now }, "config": { "response_format": "application/json", "max_tokens": 4096, "temperature": 0.1, "timeout_seconds": 30 } }')
+          
+          MAX_RETRIES=3; RETRY_COUNT=0; SUCCESS=false
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$SUCCESS" = "false" ]; do
+            echo "🔄 API attempt $((RETRY_COUNT + 1))/$MAX_RETRIES"
+            HTTP_RESPONSE=$(curl --silent --show-error --fail-with-body --max-time "$MAX_API_TIMEOUT" --connect-timeout 10 --max-redirs 3 --proto '=https' --tlsv1.2 --compressed --user-agent "Solon-AI-Review/1.0 (GitHub-Actions)" --header "Content-Type: application/json" --header "Accept: application/json" --header "X-Request-ID: solon-$(date +%s)-$(openssl rand -hex 4)" --write-out "\n%{http_code}\n%{time_total}" --data "$SAFE_PAYLOAD" "${{ secrets.SOLON_API_URL }}" 2>/dev/null || echo -e "\n000\n0")
+            
+            RESPONSE_BODY=$(echo "$HTTP_RESPONSE" | head -n -2); HTTP_CODE=$(echo "$HTTP_RESPONSE" | tail -n 2 | head -n 1); TIME_TAKEN=$(echo "$HTTP_RESPONSE" | tail -n 1)
+            echo "📡 HTTP $HTTP_CODE (${TIME_TAKEN}s)"
+            
+            if [ "$HTTP_CODE" = "200" ] && [ -n "$RESPONSE_BODY" ] && echo "$RESPONSE_BODY" | jq empty 2>/dev/null; then
+              echo "✅ Valid JSON response received"; SUCCESS=true; break
+            else
+              echo "⚠️ HTTP $HTTP_CODE - API call failed or returned invalid JSON"
+            fi
+            
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            [ $RETRY_COUNT -lt $MAX_RETRIES ] && sleep $((RETRY_COUNT * 3))
+          done
+          
+          if [ "$SUCCESS" = "true" ]; then
+            CLEAN_JSON=$(echo "$RESPONSE_BODY" | jq -c '{ summary: (.summary // "Analysis completed"), edgeCases: (.edgeCases // ["No specific edge cases identified", "Review boundary conditions and error handling"]), unitTests: { filePath: (.unitTests.filePath // "tests/"), language: (.unitTests.language // "javascript"), code: (.unitTests.code // "// Unit test generation is currently unavailable") } }')
           else
-            echo "API failed with HTTP $HTTP_CODE, using fallback"
-            FALLBACK_JSON='{"summary":"API temporarily unavailable","edgeCases":["Unable to connect to Solon API"],"unitTests":{"code":"// API connection failed"}}'
-            echo "comment_body=$FALLBACK_JSON" >> $GITHUB_OUTPUT
+            echo "❌ All API attempts failed, using fallback"
+            CLEAN_JSON='{"summary":"API temporarily unavailable - manual review recommended","edgeCases":["API connection failed","Please verify Solon service status"],"unitTests":{"filePath":"tests/","language":"javascript","code":"// API unavailable - please write tests manually"}}'
           fi
+          
+          if ! echo "$CLEAN_JSON" | jq '.summary, .edgeCases, .unitTests.filePath, .unitTests.language, .unitTests.code' > /dev/null 2>&1; then
+            echo "❌ Response validation failed, using safe fallback"
+            CLEAN_JSON='{"summary":"Response validation error","edgeCases":["Invalid response structure"],"unitTests":{"filePath":"tests/","language":"text","code":"// Response processing failed"}}'
+          fi
+          
+          echo "comment_body=$CLEAN_JSON" >> $GITHUB_OUTPUT
+          echo "✅ API response processed safely"
 
-      - name: 'Post or Update AI Review Comment'
+      - name: 'Post secure AI review comment'
         uses: peter-evans/create-or-update-comment@v4
         with:
           token: ${{ steps.app-token.outputs.token }}
@@ -80,20 +143,27 @@ jobs:
           body: |
             ### 🛡️ Solon AI Review
             
-            **Summary:** ${{ fromJson(steps.call_api.outputs.comment_body).summary || 'Analysis completed.' }}
+            **Summary:** ${{ fromJson(steps.call_api.outputs.comment_body).summary }}
             
             ---
             #### 🤔 Suggested Edge Cases
-            - ${{ fromJson(steps.call_api.outputs.comment_body).edgeCases[0] || 'No specific edge cases identified.' }}
-            - ${{ fromJson(steps.call_api.outputs.comment_body).edgeCases[1] || '' }}
+            - ${{ fromJson(steps.call_api.outputs.comment_body).edgeCases[0] }}
+            - ${{ fromJson(steps.call_api.outputs.comment_body).edgeCases[1] }}
             
             ---
             #### 🧪 Generated Unit Tests
             
-            **Suggested File Path:** `${{ fromJson(steps.call_api.outputs.comment_body).unitTests.filePath || 'tests/' }}`
+            **File:** `${{ fromJson(steps.call_api.outputs.comment_body).unitTests.filePath }}`
             
-            ```${{ fromJson(steps.call_api.outputs.comment_body).unitTests.language || 'plaintext' }}
-            ${{ fromJson(steps.call_api.outputs.comment_body).unitTests.code || '// No unit tests generated.' }}
             ```
+            ${{ fromJson(steps.call_api.outputs.comment_body).unitTests.code }}
+            ```
+            
             ---
-            <sub>🤖 This review was generated by Solon AI.</sub>
+            <sub>🤖 Generated by Solon AI • Diff: ${{ steps.get_diff.outputs.diff_size }} bytes • ${{ github.event.pull_request.updated_at }}</sub>
+
+      - name: 'Security cleanup'
+        if: always()
+        run: |
+          rm -f pr_raw.diff pr_safe.diff 2>/dev/null || true
+          echo "🧹 Cleanup completed"
