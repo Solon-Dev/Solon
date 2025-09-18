@@ -49,58 +49,49 @@ The user's code changes will be provided below inside the \`GIT_DIFF\` block.
 {raw_git_diff_string}
 \`\`\`
 `;
-
 async function callGemini(diff: string) {
+  console.log("--- Vercel Function Triggered ---");
   try {
-    // 1. Get the generative model
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest"});
+    // Log to confirm the environment variable is loaded by Vercel
+    console.log("Verifying Gemini API Key presence:", process.env.GEMINI_API_KEY ? "Key Loaded" : "KEY IS MISSING!");
 
-    // 2. Format the final prompt
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
     const finalPrompt = masterPrompt.replace('{raw_git_diff_string}', diff);
 
-    // 3. Call the model
+    console.log("--- Calling Gemini API... ---");
     const result = await model.generateContent(finalPrompt);
     const response = result.response;
-    
-    // 4. Get the response text
     const responseText = response.text();
-    
-    // 5. Clean and parse the JSON
-    // The model might wrap the JSON in ```json ... ```, so we clean it.
-    // This is the new, robust code
-const firstBrace = responseText.indexOf('{');
-const lastBrace = responseText.lastIndexOf('}');
 
-if (firstBrace === -1 || lastBrace === -1) {
-  throw new Error("No valid JSON object found in the AI response.");
-}
+    console.log("--- Gemini API Call Successful ---");
+    console.log("Response snippet:", responseText.substring(0, 100)); // Log first 100 chars of the response
 
-const jsonSubstring = responseText.substring(firstBrace, lastBrace + 1);
-const parsedJson = JSON.parse(jsonSubstring);
-    
-    return parsedJson;
+    const firstBrace = responseText.indexOf('{');
+    const lastBrace = responseText.lastIndexOf('}');
+    if (firstBrace === -1 || lastBrace === -1) {
+      throw new Error("No valid JSON object found in the AI response.");
+    }
+    const jsonSubstring = responseText.substring(firstBrace, lastBrace + 1);
+    return JSON.parse(jsonSubstring);
 
   } catch (error) {
-    console.error("Error calling Gemini API:", error);
-    // Return a structured error
+    // This is the most important log. It will show us the true error.
+    console.error("!!! GEMINI API CALL FAILED !!!", error);
     return { error: "Failed to get analysis from Gemini API." };
   }
 }
-
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const diff = body.diff;
 
     if (!diff) {
-      return NextResponse.json({ error: 'Diff is required.' }, { status: 400 });
+src/app/api/analyze/route.ts       return NextResponse.json({ error: 'Diff is required.' }, { status: 400 });
     }
 
     const analysis = await callGemini(diff); 
     
     if (analysis.error) {
-       return NextResponse.json(analysis, { status: 500 });
-    }
   
     return NextResponse.json(analysis);
   } catch (error) {
