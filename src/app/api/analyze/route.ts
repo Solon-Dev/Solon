@@ -1,14 +1,7 @@
-// In: src/app/api/analyze/route.ts
-
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { VertexAI } from '@google-cloud/vertexai';
 
-// Initialize the SDK with your API key from the environment variable
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-
-// This is the master prompt we engineered earlier.
-const masterPrompt = `
-You are Solon, a world-class Staff Software Engineer and an expert in Quality Assurance and TypeScript. Your task is to perform a critical and insightful code review on a pull request. You are rigorous, practical, and focus on what truly matters for software quality.
+const masterPrompt = `You are Solon, a world-class Staff Software Engineer and an expert in Quality Assurance and TypeScript. Your task is to perform a critical and insightful code review on a pull request. You are rigorous, practical, and focus on what truly matters for software quality.
 
 You will be provided with the output of a 'git diff' for a pull request. Your sole output MUST be a single, minified JSON object with no markdown formatting or commentary outside of the JSON structure.
 
@@ -48,42 +41,38 @@ The user's code changes will be provided below inside the \`GIT_DIFF\` block.
 \`\`\`GIT_DIFF
 {raw_git_diff_string}
 \`\`\`
-`;
+`; // Paste your full master prompt here
 
-async function callGemini(diff: string) {
+async function callVertexAI(diff: string) {
   try {
-    // 1. Get the generative model
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest"});
+    // Initialize Vertex AI
+    const vertex_ai = new VertexAI({
+      project: process.env.GCLOUD_PROJECT!,
+      location: 'us-central1',
+    });
 
-    // 2. Format the final prompt
+    // The SDK automatically uses the GOOGLE_APPLICATION_CREDENTIALS_JSON secret
+    const model = vertex_ai.getGenerativeModel({
+      model: 'gemini-1.5-flash-latest',
+    });
+
     const finalPrompt = masterPrompt.replace('{raw_git_diff_string}', diff);
 
-    // 3. Call the model
     const result = await model.generateContent(finalPrompt);
     const response = result.response;
-    
-    // 4. Get the response text
-    const responseText = response.text();
-    
-    // 5. Clean and parse the JSON
-    // The model might wrap the JSON in ```json ... ```, so we clean it.
-    // This is the new, robust code
-const firstBrace = responseText.indexOf('{');
-const lastBrace = responseText.lastIndexOf('}');
+    const responseText = response.candidates![0].content.parts[0].text!;
 
-if (firstBrace === -1 || lastBrace === -1) {
-  throw new Error("No valid JSON object found in the AI response.");
-}
-
-const jsonSubstring = responseText.substring(firstBrace, lastBrace + 1);
-const parsedJson = JSON.parse(jsonSubstring);
-    
-    return parsedJson;
+    const firstBrace = responseText.indexOf('{');
+    const lastBrace = responseText.lastIndexOf('}');
+    if (firstBrace === -1 || lastBrace === -1) {
+      throw new Error("No valid JSON object found in the AI response.");
+    }
+    const jsonSubstring = responseText.substring(firstBrace, lastBrace + 1);
+    return JSON.parse(jsonSubstring);
 
   } catch (error) {
-    console.error("Error calling Gemini API:", error);
-    // Return a structured error
-    return { error: "Failed to get analysis from Gemini API." };
+    console.error("!!! VERTEX AI CALL FAILED !!!", error);
+    return { error: "Failed to get analysis from Vertex AI." };
   }
 }
 
@@ -92,16 +81,21 @@ export async function POST(request: Request) {
     const body = await request.json();
     const diff = body.diff;
 
+    // Add a new environment variable in Vercel for your Project ID
+    if (!process.env.GCLOUD_PROJECT) {
+       throw new Error("GCLOUD_PROJECT environment variable not set");
+    }
+
     if (!diff) {
       return NextResponse.json({ error: 'Diff is required.' }, { status: 400 });
     }
 
-    const analysis = await callGemini(diff); 
-    
+    const analysis = await callVertexAI(diff);
+
     if (analysis.error) {
        return NextResponse.json(analysis, { status: 500 });
     }
-  
+
     return NextResponse.json(analysis);
   } catch (error) {
     console.error("Error in POST handler:", error);
