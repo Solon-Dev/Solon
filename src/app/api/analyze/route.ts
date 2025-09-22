@@ -1,67 +1,64 @@
 import { NextResponse } from 'next/server';
-import { VertexAI } from '@google-cloud/vertexai';
+import { GoogleAuth } from 'google-auth-library';
 
-const masterPrompt = `You are Solon, a world-class Staff Software Engineer and an expert in Quality Assurance and TypeScript. Your task is to perform a critical and insightful code review on a pull request. You are rigorous, practical, and focus on what truly matters for software quality.
+const masterPrompt = `You are Solon, a world-class Staff Software Engineer and an expert in Quality Assurance and TypeScript. Your task is to perform a critical and insightful code review on a pull request. You are rigorous, practical, and focus on what truly matters for software quality. Your sole output MUST be a single, minified JSON object.`;
 
-You will be provided with the output of a 'git diff' for a pull request. Your sole output MUST be a single, minified JSON object with no markdown formatting or commentary outside of the JSON structure.
-
-Follow these steps to construct your response:
-
-1.  **Analyze Intent:** First, quickly determine the developer's primary goal. Is this a bug fix, a new feature, a refactor, or a performance improvement? This context is crucial.
-
-2.  **Deep Code Analysis:** Scrutinize the provided \`git diff\`. Pay close attention to:
-    * **Logic Flaws:** Look for off-by-one errors, race conditions, incorrect assumptions, and mishandled state.
-    * **API Changes:** Identify any changes to function signatures, component props, or exported modules. Are they breaking changes?
-    * **Security & Performance:** Note any potential security vulnerabilities (like improper input handling) or performance regressions (like inefficient loops or queries).
-    * **Readability & Maintainability:** Assess if the code is overly complex or difficult to understand, but do not comment on minor style issues like whitespace.
-
-3.  **Construct the JSON Response:** Based on your analysis, build the JSON object according to the specified schema.
-
-**Output Schema (JSON ONLY):**
-\`\`\`json
-{
-  "summary": "A concise, one-sentence summary of the PR's purpose, written in plain English for a project manager.",
-  "edgeCases": [
-    "A plausible, high-impact edge case the developer may have missed. Frame it as a question starting with 'What happens if...'.",
-    "Another distinct and critical edge case suggestion."
-  ],
-  "unitTests": {
-    "isTestable": true,
-    "explanation": "A brief, one-sentence explanation of the primary logic being tested.",
-    "filePath": "A suggested file path for the new test file, e.g., 'src/components/Button/Button.test.tsx'.",
-    "language": "typescript",
-    "code": "The complete, runnable, and self-contained unit test code for the core logic, using a standard testing framework like Jest with React Testing Library, Vitest, or the equivalent. Do not use placeholder comments; the code must be functional."
-  }
-}
-\`\`\`
-
---- INPUT ---
-The user's code changes will be provided below inside the \`GIT_DIFF\` block.
-
-\`\`\`GIT_DIFF
-{raw_git_diff_string}
-\`\`\`
-`; // Paste your full master prompt here
-
-async function callVertexAI(diff: string) {
+async function callVertexAI(diff: string, projectId: string) {
   try {
-    // Initialize Vertex AI
-    const vertex_ai = new VertexAI({
-      project: process.env.GCLOUD_PROJECT!,
-      location: 'us-central1',
+    console.log("--- Vercel Function Triggered: Fail-Proof Auth ---");
+
+    if (!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+      throw new Error("CRITICAL: GOOGLE_APPLICATION_CREDENTIALS_JSON is not set.");
+    }
+    
+    const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+
+    const auth = new GoogleAuth({
+      credentials,
+      scopes: 'https://www.googleapis.com/auth/cloud-platform',
     });
 
-    // The SDK automatically uses the GOOGLE_APPLICATION_CREDENTIALS_JSON secret
-    const model = vertex_ai.getGenerativeModel({
-      model: 'gemini-1.5-flash-latest',
-    });
+    const authToken = await auth.getAccessToken();
+    console.log("--- Successfully generated auth token ---");
 
+    const model = 'gemini-1.5-flash-latest';
+    const apiEndpoint = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/${model}:generateContent`;
+    
     const finalPrompt = masterPrompt.replace('{raw_git_diff_string}', diff);
+    const requestBody = {
+      contents: [{ parts: [{ text: finalPrompt }] }],
+    };
 
-    const result = await model.generateContent(finalPrompt);
-    const response = result.response;
-    const responseText = response.candidates![0].content.parts[0].text!;
+    const apiResponse = await fetch(apiEndpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${authToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
 
+    if (!apiResponse.ok) {
+        const errorBody = await apiResponse.text();
+        throw new Error(`API call failed with status ${apiResponse.status}: ${errorBody}`);
+    }
+
+    const responseData = await apiResponse.json();
+    console.log("--- Gemini API Call Successful ---");
+
+    // FAIL-PROOF CHECK: Gracefully handle empty or safety-filtered responses from the AI
+    const responseText = responseData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    if (!responseText) {
+      console.error("!!! AI returned an empty candidate. Full response:", JSON.stringify(responseData, null, 2));
+      // Return a valid JSON structure indicating the failure
+      return { 
+        summary: "AI analysis could not be completed.",
+        edgeCases: ["The AI returned no content, which may be due to safety filters or an issue with the input diff."],
+        unitTests: { code: "// No tests generated due to empty AI response." }
+      };
+    }
+    
     const firstBrace = responseText.indexOf('{');
     const lastBrace = responseText.lastIndexOf('}');
     if (firstBrace === -1 || lastBrace === -1) {
@@ -71,8 +68,8 @@ async function callVertexAI(diff: string) {
     return JSON.parse(jsonSubstring);
 
   } catch (error) {
-    console.error("!!! VERTEX AI CALL FAILED !!!", error);
-    return { error: "Failed to get analysis from Vertex AI." };
+    console.error("!!! VERTEX AI CALL FAILED (Fail-Proof Auth) !!!", error);
+    return { error: `Failed to get analysis from Vertex AI: ${error}` };
   }
 }
 
@@ -80,22 +77,21 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const diff = body.diff;
+    const projectId = process.env.GCLOUD_PROJECT;
 
-    // Add a new environment variable in Vercel for your Project ID
-    if (!process.env.GCLOUD_PROJECT) {
-       throw new Error("GCLOUD_PROJECT environment variable not set");
+    if (!projectId) {
+      return NextResponse.json({ error: "GCLOUD_PROJECT environment variable not set." }, { status: 500 });
     }
-
     if (!diff) {
       return NextResponse.json({ error: 'Diff is required.' }, { status: 400 });
     }
-
-    const analysis = await callVertexAI(diff);
-
+    
+    const analysis = await callVertexAI(diff, projectId);
+    
     if (analysis.error) {
        return NextResponse.json(analysis, { status: 500 });
     }
-
+  
     return NextResponse.json(analysis);
   } catch (error) {
     console.error("Error in POST handler:", error);
