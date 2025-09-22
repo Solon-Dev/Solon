@@ -24,7 +24,7 @@ Follow these steps to construct your response:
   "edgeCases": [
     "A plausible, high-impact edge case the developer may have missed. Frame it as a question starting with 'What happens if...'.",
     "Another distinct and critical edge case suggestion."
-  ],
+],
   "unitTests": {
     "isTestable": true,
     "explanation": "A brief, one-sentence explanation of the primary logic being tested.",
@@ -41,17 +41,33 @@ The user's code changes will be provided below inside the \`GIT_DIFF\` block.
 \`\`\`GIT_DIFF
 {raw_git_diff_string}
 \`\`\`
-`; // Paste your full master prompt here
+`; // Ensure your full prompt is pasted here
 
 async function callVertexAI(diff: string) {
   try {
-    // Initialize Vertex AI
-    const vertex_ai = new VertexAI({
-      project: process.env.GCLOUD_PROJECT!,
-      location: 'us-central1',
-    });
+    console.log("--- Vercel Function Triggered: Explicit Auth ---");
+    
+    if (!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+      throw new Error("GOOGLE_APPLICATION_CREDENTIALS_JSON is not set.");
+    }
+    if (!process.env.GCLOUD_PROJECT) {
+      throw new Error("GCLOUD_PROJECT is not set.");
+    }
 
-    // The SDK automatically uses the GOOGLE_APPLICATION_CREDENTIALS_JSON secret
+    // Manually parse the credentials from the environment variable
+    const credentialsJson = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+    const credentials = {
+      client_email: credentialsJson.client_email,
+      private_key: credentialsJson.private_key,
+    };
+
+    // Initialize Vertex AI with explicit credentials
+    const vertex_ai = new VertexAI({
+      project: process.env.GCLOUD_PROJECT,
+      location: 'us-central1',
+      credentials, // Pass the credentials object directly
+    });
+    
     const model = vertex_ai.getGenerativeModel({
       model: 'gemini-1.5-flash-latest',
     });
@@ -71,7 +87,7 @@ async function callVertexAI(diff: string) {
     return JSON.parse(jsonSubstring);
 
   } catch (error) {
-    console.error("!!! VERTEX AI CALL FAILED !!!", error);
+    console.error("!!! VERTEX AI CALL FAILED (Explicit Auth) !!!", error);
     return { error: "Failed to get analysis from Vertex AI." };
   }
 }
@@ -81,24 +97,20 @@ export async function POST(request: Request) {
     const body = await request.json();
     const diff = body.diff;
 
-    // Add a new environment variable in Vercel for your Project ID
-    if (!process.env.GCLOUD_PROJECT) {
-       throw new Error("GCLOUD_PROJECT environment variable not set");
-    }
-
     if (!diff) {
       return NextResponse.json({ error: 'Diff is required.' }, { status: 400 });
     }
-
+    
     const analysis = await callVertexAI(diff);
-
+    
     if (analysis.error) {
        return NextResponse.json(analysis, { status: 500 });
     }
-
+  
     return NextResponse.json(analysis);
   } catch (error) {
     console.error("Error in POST handler:", error);
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
 }
+
