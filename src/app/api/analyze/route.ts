@@ -45,20 +45,27 @@ The user's code changes will be provided below inside the \`GIT_DIFF\` block.
 
 async function callVertexAI(diff: string) {
   try {
-    // Initialize Vertex AI
+    console.log("--- Vercel Function Triggered ---");
     const vertex_ai = new VertexAI({
       project: process.env.GCLOUD_PROJECT!,
       location: 'us-central1',
     });
 
-    // The SDK automatically uses the GOOGLE_APPLICATION_CREDENTIALS_JSON secret
     const model = vertex_ai.getGenerativeModel({
       model: 'gemini-1.5-flash-latest',
     });
 
     const finalPrompt = masterPrompt.replace('{raw_git_diff_string}', diff);
+    console.log("--- Calling Gemini API... ---");
 
     const result = await model.generateContent(finalPrompt);
+
+    // --- THIS IS THE NEW, CRITICAL LOG ---
+    console.log("--- RAW GEMINI RESPONSE ---");
+    console.log(JSON.stringify(result.response, null, 2));
+    console.log("--- END RAW GEMINI RESPONSE ---");
+    // ---------------------------------
+
     const response = result.response;
     const responseText = response.candidates![0].content.parts[0].text!;
 
