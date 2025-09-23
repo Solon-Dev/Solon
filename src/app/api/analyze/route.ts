@@ -1,25 +1,21 @@
 import { NextResponse } from 'next/server';
 import { GoogleAuth } from 'google-auth-library';
 
-const masterPrompt = `You are Solon, a world-class Staff Software Engineer and an expert in Quality Assurance and TypeScript. Your task is to perform a critical and insightful code review on a pull request. You are rigorous, practical, and focus on what truly matters for software quality. Your sole output MUST be a single, minified JSON object.`;
+// 1. Refined Prompt from the document
+const masterPrompt = `You are Solon, a world-class Staff Software Engineer and an expert in Quality Assurance. Your task is to perform a detailed code review on the provided git diff. For each major code change, add specific line-by-line comments and practical quality assurance suggestions. List at least 2 unique edge cases that could break the code. Generate at least one meaningful unit test for each function impacted. Your response MUST be a single, minified JSON object in the format: {"summary": "One paragraph summary.", "comments": [{ "line": "X", "comment": "..." }], "edgeCases": ["...", "..."], "unitTests": { "code": "...", "filename": "..." } } Here is the raw_git_diff_string: {raw_git_diff_string}`;
 
 async function callVertexAI(diff: string, projectId: string) {
   try {
-    console.log("--- Vercel Function Triggered: Fail-Proof Auth ---");
-
-    if (!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+    const credentialsJSON = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+    if (!credentialsJSON) {
       throw new Error("CRITICAL: GOOGLE_APPLICATION_CREDENTIALS_JSON is not set.");
     }
-    
-    const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
-
+    const credentials = JSON.parse(credentialsJSON);
     const auth = new GoogleAuth({
       credentials,
       scopes: 'https://www.googleapis.com/auth/cloud-platform',
     });
-
     const authToken = await auth.getAccessToken();
-    console.log("--- Successfully generated auth token ---");
 
     const model = 'gemini-1.5-flash-latest';
     const apiEndpoint = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/${model}:generateContent`;
@@ -44,31 +40,32 @@ async function callVertexAI(diff: string, projectId: string) {
     }
 
     const responseData = await apiResponse.json();
-    console.log("--- Gemini API Call Successful ---");
+    // 3. Log Raw AI Output
+    console.log("Gemini raw responseData:", JSON.stringify(responseData, null, 2));
 
-    // FAIL-PROOF CHECK: Gracefully handle empty or safety-filtered responses from the AI
-    const responseText = responseData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-    if (!responseText) {
-      console.error("!!! AI returned an empty candidate. Full response:", JSON.stringify(responseData, null, 2));
-      // Return a valid JSON structure indicating the failure
+    // 5. Handle Model-Side Filtering
+    if (responseData?.candidates?.length === 0) {
+      console.error("!!! AI returned no candidates, likely due to safety filters. !!!");
       return { 
-        summary: "AI analysis could not be completed.",
-        edgeCases: ["The AI returned no content, which may be due to safety filters or an issue with the input diff."],
-        unitTests: { code: "// No tests generated due to empty AI response." }
+        summary: "AI analysis did not return a response. This may be due to safety filters on the input content. Please review the code manually.",
+        edgeCases: [],
+        unitTests: { code: "// No tests generated." }
       };
     }
     
-    const firstBrace = responseText.indexOf('{');
-    const lastBrace = responseText.lastIndexOf('}');
-    if (firstBrace === -1 || lastBrace === -1) {
-      throw new Error("No valid JSON object found in the AI response.");
+    const responseText = responseData.candidates[0].content.parts[0].text || '';
+
+    // 4. Robust JSON Parsing
+    const jsonMatch = responseText.match(/\{(?:[^{}]|\{[^{}]*\})*\}/);
+    if (!jsonMatch) {
+      console.error("!!! No valid JSON object found in AI response. !!!", responseText);
+      return { error: "Failed to parse AI output as JSON.", rawAIResponse: responseText };
     }
-    const jsonSubstring = responseText.substring(firstBrace, lastBrace + 1);
-    return JSON.parse(jsonSubstring);
+    
+    return JSON.parse(jsonMatch[0]);
 
   } catch (error) {
-    console.error("!!! VERTEX AI CALL FAILED (Fail-Proof Auth) !!!", error);
+    console.error("!!! VERTEX AI CALL FAILED (Hardened) !!!", error);
     return { error: `Failed to get analysis from Vertex AI: ${error}` };
   }
 }
@@ -76,16 +73,22 @@ async function callVertexAI(diff: string, projectId: string) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const diff = body.diff;
+    let diff = body.diff;
     const projectId = process.env.GCLOUD_PROJECT;
 
     if (!projectId) {
       return NextResponse.json({ error: "GCLOUD_PROJECT environment variable not set." }, { status: 500 });
     }
-    if (!diff) {
-      return NextResponse.json({ error: 'Diff is required.' }, { status: 400 });
-    }
     
+    // 2. Check and Limit Diff Content
+    if (!diff || diff.length < 10) {
+      return NextResponse.json({ summary: "No substantive code changes detected to analyze.", edgeCases: [], unitTests: {} });
+    }
+    if (diff.length > 3400) {
+      console.log("Diff is too long, truncating...");
+      diff = diff.substring(0, 3400);
+    }
+
     const analysis = await callVertexAI(diff, projectId);
     
     if (analysis.error) {
