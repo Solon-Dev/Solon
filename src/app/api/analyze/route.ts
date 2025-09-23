@@ -2,15 +2,7 @@ import { NextResponse } from 'next/server';
 import { GoogleAuth } from 'google-auth-library';
 
 // 1. Refined Prompt from the document
-const masterPrompt = `
-Act as an expert code reviewer. Analyze the following git diff.
-Provide your response as a single, minified JSON object with NO MARKDOWN formatting.
-The JSON object must have three keys: "summary" (a concise string), "edgeCases" (an array of two strings), and "unitTests" (an object with "filePath" and "code" strings).
-Do not add any text before or after the JSON object.
-
-Here is the diff:
-{raw_git_diff_string}
-`;
+const masterPrompt = `Analyze the following git diff and provide a one-sentence summary. Return your response as a single, minified JSON object with one key: "summary". Do not include any other text. Diff: {raw_git_diff_string}`;
 
 async function callVertexAI(diff: string, projectId: string) {
   try {
