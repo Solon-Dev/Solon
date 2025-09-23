@@ -2,7 +2,15 @@ import { NextResponse } from 'next/server';
 import { GoogleAuth } from 'google-auth-library';
 
 // 1. Refined Prompt from the document
-const masterPrompt = `You are Solon, a world-class Staff Software Engineer and an expert in Quality Assurance. Your task is to perform a detailed code review on the provided git diff. For each major code change, add specific line-by-line comments and practical quality assurance suggestions. List at least 2 unique edge cases that could break the code. Generate at least one meaningful unit test for each function impacted. Your response MUST be a single, minified JSON object in the format: {"summary": "One paragraph summary.", "comments": [{ "line": "X", "comment": "..." }], "edgeCases": ["...", "..."], "unitTests": { "code": "...", "filename": "..." } } Here is the raw_git_diff_string: {raw_git_diff_string}`;
+const masterPrompt = `
+Act as an expert code reviewer. Analyze the following git diff.
+Provide your response as a single, minified JSON object with NO MARKDOWN formatting.
+The JSON object must have three keys: "summary" (a concise string), "edgeCases" (an array of two strings), and "unitTests" (an object with "filePath" and "code" strings).
+Do not add any text before or after the JSON object.
+
+Here is the diff:
+{raw_git_diff_string}
+`;
 
 async function callVertexAI(diff: string, projectId: string) {
   try {
