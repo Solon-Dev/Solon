@@ -1,24 +1,33 @@
 import { NextResponse } from 'next/server';
 import { GoogleAuth } from 'google-auth-library';
 
-// 1. Refined Prompt from the document
-const masterPrompt = `Analyze the following git diff and provide a one-sentence summary. Return your response as a single, minified JSON object with one key: "summary". Do not include any other text. Diff: {raw_git_diff_string}`;
+const masterPrompt = `
+Act as an expert code reviewer. Analyze the following git diff.
+Provide your response as a single, minified JSON object with NO MARKDOWN formatting.
+The JSON object must have three keys: "summary" (a concise string), "edgeCases" (an array of two strings), and "unitTests" (an object with "filePath" and "code" strings).
+Do not add any text before or after the JSON object.
+
+Here is the diff:
+{raw_git_diff_string}
+`;
 
 async function callVertexAI(diff: string, projectId: string) {
   try {
-    const credentialsJSON = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
-    if (!credentialsJSON) {
+    if (!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
       throw new Error("CRITICAL: GOOGLE_APPLICATION_CREDENTIALS_JSON is not set.");
     }
-    const credentials = JSON.parse(credentialsJSON);
+    
+    const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+
     const auth = new GoogleAuth({
       credentials,
       scopes: 'https://www.googleapis.com/auth/cloud-platform',
     });
+
     const authToken = await auth.getAccessToken();
 
-    const model = vertex_ai.getGener[native code]();
-    const apiEndpoint = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/${model}:generateContent`;
+    const modelId = 'gemini-1.0-pro'; // Using the stable model
+    const apiEndpoint = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/${modelId}:generateContent`;
     
     const finalPrompt = masterPrompt.replace('{raw_git_diff_string}', diff);
     const requestBody = {
@@ -40,32 +49,26 @@ async function callVertexAI(diff: string, projectId: string) {
     }
 
     const responseData = await apiResponse.json();
-    // 3. Log Raw AI Output
-    console.log("Gemini raw responseData:", JSON.stringify(responseData, null, 2));
+    const responseText = responseData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-    // 5. Handle Model-Side Filtering
-    if (responseData?.candidates?.length === 0) {
-      console.error("!!! AI returned no candidates, likely due to safety filters. !!!");
+    if (!responseText) {
       return { 
-        summary: "AI analysis did not return a response. This may be due to safety filters on the input content. Please review the code manually.",
-        edgeCases: [],
+        summary: "AI analysis did not return a response.",
+        edgeCases: ["The AI returned no content, possibly due to safety filters."],
         unitTests: { code: "// No tests generated." }
       };
     }
     
-    const responseText = responseData.candidates[0].content.parts[0].text || '';
-
-    // 4. Robust JSON Parsing
-    const jsonMatch = responseText.match(/\{(?:[^{}]|\{[^{}]*\})*\}/);
-    if (!jsonMatch) {
-      console.error("!!! No valid JSON object found in AI response. !!!", responseText);
-      return { error: "Failed to parse AI output as JSON.", rawAIResponse: responseText };
+    const firstBrace = responseText.indexOf('{');
+    const lastBrace = responseText.lastIndexOf('}');
+    if (firstBrace === -1 || lastBrace === -1) {
+      throw new Error("No valid JSON object found in AI response.");
     }
-    
-    return JSON.parse(jsonMatch[0]);
+    const jsonSubstring = responseText.substring(firstBrace, lastBrace + 1);
+    return JSON.parse(jsonSubstring);
 
   } catch (error) {
-    console.error("!!! VERTEX AI CALL FAILED (Hardened) !!!", error);
+    console.error("!!! VERTEX AI CALL FAILED !!!", error);
     return { error: `Failed to get analysis from Vertex AI: ${error}` };
   }
 }
@@ -73,22 +76,16 @@ async function callVertexAI(diff: string, projectId: string) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    let diff = body.diff;
+    const diff = body.diff;
     const projectId = process.env.GCLOUD_PROJECT;
 
     if (!projectId) {
       return NextResponse.json({ error: "GCLOUD_PROJECT environment variable not set." }, { status: 500 });
     }
+    if (!diff) {
+      return NextResponse.json({ error: 'Diff is required.' }, { status: 400 });
+    }
     
-    // 2. Check and Limit Diff Content
-    if (!diff || diff.length < 10) {
-      return NextResponse.json({ summary: "No substantive code changes detected to analyze.", edgeCases: [], unitTests: {} });
-    }
-    if (diff.length > 3400) {
-      console.log("Diff is too long, truncating...");
-      diff = diff.substring(0, 3400);
-    }
-
     const analysis = await callVertexAI(diff, projectId);
     
     if (analysis.error) {
