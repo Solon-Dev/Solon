@@ -17,7 +17,7 @@ async function callVertexAI(diff: string, projectId: string) {
     });
     const authToken = await auth.getAccessToken();
 
-    const model = 'gemini-1.5-flash-latest';
+    const model = 'gemini-1.5-flash-001';
     const apiEndpoint = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/${model}:generateContent`;
     
     const finalPrompt = masterPrompt.replace('{raw_git_diff_string}', diff);
