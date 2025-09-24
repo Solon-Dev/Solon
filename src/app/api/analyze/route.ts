@@ -2,13 +2,39 @@ import { NextResponse } from 'next/server';
 import { GoogleAuth } from 'google-auth-library';
 
 const masterPrompt = `
-Act as an expert code reviewer. Analyze the following git diff.
-Provide your response as a single, minified JSON object with NO MARKDOWN formatting.
-The JSON object must have three keys: "summary" (a concise string), "edgeCases" (an array of two strings), and "unitTests" (an object with "filePath" and "code" strings).
-Do not add any text before or after the JSON object.
+You are an expert code reviewer named Solon.
+Analyze the following git diff and provide your analysis in a JSON object.
+Do not include any text outside of the JSON object.
 
-Here is the diff:
+EXAMPLE INPUT:
+diff --git a/src/utils/math.ts b/src/utils/math.ts
+--- a/src/utils/math.ts
++++ b/src/utils/math.ts
+@@ -1,6 +1,6 @@
+ export function calculateAverage(numbers: number[]): number {
+   const sum = numbers.reduce((acc, num) => acc + num, 0);
+-  return sum / numbers.length;
++  if (numbers.length === 0) return 0;
++  return sum / numbers.length;
+ }
+
+EXAMPLE OUTPUT:
+{
+  "summary": "The code is updated to handle empty arrays by returning 0, preventing a division-by-zero error.",
+  "edgeCases": [
+    "Consider what should happen for an array of non-number values.",
+    "Test with a very large array to check for performance implications."
+  ],
+  "unitTests": {
+    "filePath": "src/utils/math.test.ts",
+    "code": "describe('calculateAverage', () => { it('should return 0 for an empty array', () => { expect(calculateAverage([])).toBe(0); }); });"
+  }
+}
+
+ACTUAL INPUT:
 {raw_git_diff_string}
+
+ACTUAL OUTPUT (JSON ONLY):
 `;
 
 async function callVertexAI(diff: string, projectId: string) {
