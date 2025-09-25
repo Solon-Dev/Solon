@@ -44,20 +44,25 @@ async function callVertexAI(diff: string, projectId: string) {
     }
     
     const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
-
     const auth = new GoogleAuth({
       credentials,
       scopes: 'https://www.googleapis.com/auth/cloud-platform',
     });
-
     const authToken = await auth.getAccessToken();
 
-    const modelId = 'gemini-1.0-pro'; // Using the stable model
+    const modelId = 'gemini-1.0-pro';
     const apiEndpoint = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/${modelId}:generateContent`;
     
     const finalPrompt = masterPrompt.replace('{raw_git_diff_string}', diff);
+    
+    // This new block controls the AI's output format and size
     const requestBody = {
       contents: [{ parts: [{ text: finalPrompt }] }],
+      generationConfig: {
+        "responseMimeType": "application/json",
+        "maxOutputTokens": 4096,
+        "temperature": 0.2
+      }
     };
 
     const apiResponse = await fetch(apiEndpoint, {
@@ -75,23 +80,9 @@ async function callVertexAI(diff: string, projectId: string) {
     }
 
     const responseData = await apiResponse.json();
-    const responseText = responseData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const responseText = responseData?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
 
-    if (!responseText) {
-      return { 
-        summary: "AI analysis did not return a response.",
-        edgeCases: ["The AI returned no content, possibly due to safety filters."],
-        unitTests: { code: "// No tests generated." }
-      };
-    }
-    
-    const firstBrace = responseText.indexOf('{');
-    const lastBrace = responseText.lastIndexOf('}');
-    if (firstBrace === -1 || lastBrace === -1) {
-      throw new Error("No valid JSON object found in AI response.");
-    }
-    const jsonSubstring = responseText.substring(firstBrace, lastBrace + 1);
-    return JSON.parse(jsonSubstring);
+    return JSON.parse(responseText);
 
   } catch (error) {
     console.error("!!! VERTEX AI CALL FAILED !!!", error);
