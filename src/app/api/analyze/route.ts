@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { GoogleAuth } from 'google-auth-library';
 
 const masterPrompt = `
-You are an expert code reviewer named Solon.
+Act as an expert code reviewer named Solon.
 Analyze the following git diff and provide your analysis in a JSON object.
 Do not include any text outside of the JSON object.
 
@@ -60,7 +60,7 @@ async function callVertexAI(diff: string, projectId: string) {
       contents: [{ parts: [{ text: finalPrompt }] }],
       generationConfig: {
         "responseMimeType": "application/json",
-        "maxOutputTokens": 4096,
+        "maxOutputTokens": 8192,
         "temperature": 0.2
       }
     };
