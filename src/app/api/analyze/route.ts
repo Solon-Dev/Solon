@@ -1,92 +1,51 @@
 import { NextResponse } from 'next/server';
-import { GoogleAuth } from 'google-auth-library';
+import Anthropic from '@anthropic-ai/sdk';
 
+// A prompt optimized for Claude's JSON output
 const masterPrompt = `
-Act as an expert code reviewer named Solon.
-Analyze the following git diff and provide your analysis in a JSON object.
-Do not include any text outside of the JSON object.
+You are an expert code reviewer named Solon.
+Analyze the following git diff. Your response MUST be a single, minified JSON object with NO MARKDOWN formatting or any other text outside the JSON object.
+The JSON object must have three keys: "summary" (a concise string), "edgeCases" (an array of two strings), and "unitTests" (an object with "filePath" and "code" strings).
+If you cannot perform a review, the value of the "summary" key MUST be a string explaining the reason.
 
-EXAMPLE INPUT:
-diff --git a/src/utils/math.ts b/src/utils/math.ts
---- a/src/utils/math.ts
-+++ b/src/utils/math.ts
-@@ -1,6 +1,6 @@
- export function calculateAverage(numbers: number[]): number {
-   const sum = numbers.reduce((acc, num) => acc + num, 0);
--  return sum / numbers.length;
-+  if (numbers.length === 0) return 0;
-+  return sum / numbers.length;
- }
-
-EXAMPLE OUTPUT:
-{
-  "summary": "The code is updated to handle empty arrays by returning 0, preventing a division-by-zero error.",
-  "edgeCases": [
-    "Consider what should happen for an array of non-number values.",
-    "Test with a very large array to check for performance implications."
-  ],
-  "unitTests": {
-    "filePath": "src/utils/math.test.ts",
-    "code": "describe('calculateAverage', () => { it('should return 0 for an empty array', () => { expect(calculateAverage([])).toBe(0); }); });"
-  }
-}
-
-ACTUAL INPUT:
+Here is the git diff:
+<diff>
 {raw_git_diff_string}
-
-ACTUAL OUTPUT (JSON ONLY):
+</diff>
 `;
 
-async function callVertexAI(diff: string, projectId: string) {
+async function callClaudeAPI(diff: string) {
   try {
-    if (!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
-      throw new Error("CRITICAL: GOOGLE_APPLICATION_CREDENTIALS_JSON is not set.");
+    if (!process.env.ANTHROPIC_API_KEY) {
+      throw new Error("CRITICAL: ANTHROPIC_API_KEY is not set.");
     }
-    
-    const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
-    const auth = new GoogleAuth({
-      credentials,
-      scopes: 'https://www.googleapis.com/auth/cloud-platform',
-    });
-    const authToken = await auth.getAccessToken();
 
-    const modelId = 'gemini-1.0-pro';
-    const apiEndpoint = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/${modelId}:generateContent`;
-    
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+    });
+
     const finalPrompt = masterPrompt.replace('{raw_git_diff_string}', diff);
-    
-    // This new block controls the AI's output format and size
-    const requestBody = {
-      contents: [{ parts: [{ text: finalPrompt }] }],
-      generationConfig: {
-        "responseMimeType": "application/json",
-        "maxOutputTokens": 8192,
-        "temperature": 0.2
-      }
-    };
 
-    const apiResponse = await fetch(apiEndpoint, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${authToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
+    const response = await anthropic.messages.create({
+      model: "claude-3-haiku-20240307", // Using Claude's fastest and most cost-effective model
+      max_tokens: 4096,
+      messages: [{ role: "user", content: finalPrompt }],
     });
 
-    if (!apiResponse.ok) {
-        const errorBody = await apiResponse.text();
-        throw new Error(`API call failed with status ${apiResponse.status}: ${errorBody}`);
+    const responseText = response.content[0].text;
+    
+    // Extract the JSON object from the response
+    const firstBrace = responseText.indexOf('{');
+    const lastBrace = responseText.lastIndexOf('}');
+    if (firstBrace === -1 || lastBrace === -1) {
+      throw new Error("No valid JSON object found in the AI response.");
     }
-
-    const responseData = await apiResponse.json();
-    const responseText = responseData?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-
-    return JSON.parse(responseText);
+    const jsonSubstring = responseText.substring(firstBrace, lastBrace + 1);
+    return JSON.parse(jsonSubstring);
 
   } catch (error) {
-    console.error("!!! VERTEX AI CALL FAILED !!!", error);
-    return { error: `Failed to get analysis from Vertex AI: ${error}` };
+    console.error("!!! CLAUDE API CALL FAILED !!!", error);
+    return { error: `Failed to get analysis from Claude API: ${error}` };
   }
 }
 
@@ -94,16 +53,12 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const diff = body.diff;
-    const projectId = process.env.GCLOUD_PROJECT;
 
-    if (!projectId) {
-      return NextResponse.json({ error: "GCLOUD_PROJECT environment variable not set." }, { status: 500 });
-    }
     if (!diff) {
       return NextResponse.json({ error: 'Diff is required.' }, { status: 400 });
     }
     
-    const analysis = await callVertexAI(diff, projectId);
+    const analysis = await callClaudeAPI(diff);
     
     if (analysis.error) {
        return NextResponse.json(analysis, { status: 500 });
