@@ -32,7 +32,11 @@ async function callClaudeAPI(diff: string) {
       messages: [{ role: "user", content: finalPrompt }],
     });
 
-    const responseText = response.content[0].text;
+    const responseBlock = response.content[0];
+if (responseBlock.type !== 'text') {
+  throw new Error("Unexpected response block type from AI.");
+}
+const responseText = responseBlock.text;
     
     // Extract the JSON object from the response
     const firstBrace = responseText.indexOf('{');
