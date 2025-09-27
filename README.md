@@ -40,6 +40,3 @@ Have a bug report or a feature request? Please **[open an issue](https://github.
 ## 📜 License
 
 This project is licensed under the MIT License - see the `LICENSE` file for details.
-# Force Vercel deployment Sat Sep 27 08:26:21 EDT 2025
-# Trigger redeploy with env vars Sat Sep 27 08:57:21 EDT 2025
-# Force fresh deployment Sat Sep 27 09:01:45 EDT 2025
