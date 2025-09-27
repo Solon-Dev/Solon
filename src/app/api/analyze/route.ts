@@ -55,7 +55,7 @@ async function callClaudeAPI(diff: string): Promise<ReviewResult | ErrorResult> 
     const finalPrompt = masterPrompt.replace('{raw_git_diff_string}', diff);
     
     const response = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20241022", // Updated to latest model
+      model: "claude-3-5-sonnet-20240620", // Use stable available model
       max_tokens: 4096,
       temperature: 0.1, // Low temperature for consistent JSON output
       messages: [{ role: "user", content: finalPrompt }],
@@ -69,8 +69,6 @@ async function callClaudeAPI(diff: string): Promise<ReviewResult | ErrorResult> 
     const responseText = responseBlock.text.trim();
     
     // More robust JSON extraction
-    let jsonContent: string;
-    
     // Try to find JSON boundaries more carefully
     const openBrace = responseText.indexOf('{');
     if (openBrace === -1) {
@@ -97,7 +95,7 @@ async function callClaudeAPI(diff: string): Promise<ReviewResult | ErrorResult> 
       throw new Error("Malformed JSON in Claude response");
     }
     
-    jsonContent = responseText.substring(openBrace, closeBrace + 1);
+    const jsonContent = responseText.substring(openBrace, closeBrace + 1);
     
     // Parse and validate JSON structure
     const parsed = JSON.parse(jsonContent);
