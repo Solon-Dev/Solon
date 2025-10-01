@@ -55,7 +55,7 @@ async function callClaudeAPI(diff: string): Promise<ReviewResult | ErrorResult> 
     const finalPrompt = masterPrompt.replace('{raw_git_diff_string}', diff);
     
     const response = await anthropic.messages.create({
-      model: "claude-3-haiku-20240307", // Use most widely available model
+      model: "claude-sonnet-4-20250514", // Latest Claude Sonnet 4.5 model
       max_tokens: 4096,
       temperature: 0.1, // Low temperature for consistent JSON output
       messages: [{ role: "user", content: finalPrompt }],
