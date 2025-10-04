@@ -115,12 +115,33 @@ async function callClaudeAPI(diff: string): Promise<ReviewResult | ErrorResult> 
         typeof parsed.unitTests.code !== 'string') {
       throw new Error("Invalid JSON structure from Claude API");
     }
+// Check if we got an error result
+    if ('error' in analysis) {
+      return NextResponse.json(analysis, { status: 500 });
+    }
     
-    return parsed as ReviewResult;
+    // Format the review as markdown
+    const formatted = `### 🛡️ Solon AI Review
+
+**Summary:** 
+${analysis.summary}
+
+**Edge Cases:**
+${analysis.edgeCases.map(ec => `- ${ec}`).join('\n')}
+
+**Suggested Unit Tests:**
+\`\`\`typescript
+// ${analysis.unitTests.filePath}
+${analysis.unitTests.code}
+\`\`\``;
     
-  } catch (error) {
-    console.error("Claude API call failed:", error);
-    
+    // Return successful analysis with formatted version
+    return NextResponse.json({
+      summary: analysis.summary,
+      edgeCases: analysis.edgeCases,
+      unitTests: analysis.unitTests,
+      formatted: formatted
+    });
     // Return structured error instead of throwing
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return { 
