@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 
-// Improved prompt for reliable JSON output
 const masterPrompt = `
 You are Solon, an expert code reviewer specializing in JavaScript and TypeScript.
 
@@ -48,6 +47,7 @@ interface ErrorResult {
   error: string;
 }
 
+// This function now ONLY handles fetching and parsing from the API
 async function callClaudeAPI(diff: string): Promise<ReviewResult | ErrorResult> {
   try {
     if (!process.env.ANTHROPIC_API_KEY) {
@@ -61,9 +61,9 @@ async function callClaudeAPI(diff: string): Promise<ReviewResult | ErrorResult> 
     const finalPrompt = masterPrompt.replace('{raw_git_diff_string}', diff);
     
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514", // Latest Claude Sonnet 4.5 model
+      model: "claude-3-sonnet-20240229", // Using a stable model name
       max_tokens: 4096,
-      temperature: 0.1, // Low temperature for consistent JSON output
+      temperature: 0.1,
       messages: [{ role: "user", content: finalPrompt }],
     });
 
@@ -74,14 +74,12 @@ async function callClaudeAPI(diff: string): Promise<ReviewResult | ErrorResult> 
 
     const responseText = responseBlock.text.trim();
     
-    // More robust JSON extraction
-    // Try to find JSON boundaries more carefully
+    // Robust JSON extraction logic
     const openBrace = responseText.indexOf('{');
     if (openBrace === -1) {
       throw new Error("No JSON object found in Claude response");
     }
     
-    // Find the matching closing brace by counting braces
     let braceCount = 0;
     let closeBrace = -1;
     
@@ -103,28 +101,57 @@ async function callClaudeAPI(diff: string): Promise<ReviewResult | ErrorResult> 
     
     const jsonContent = responseText.substring(openBrace, closeBrace + 1);
     
-    // Parse and validate JSON structure
-    const parsed = JSON.parse(jsonContent);
+    const analysis = JSON.parse(jsonContent);
     
-    // Validate expected structure
-    if (typeof parsed !== 'object' || 
-        typeof parsed.summary !== 'string' ||
-        !Array.isArray(parsed.edgeCases) ||
-        typeof parsed.unitTests !== 'object' ||
-        typeof parsed.unitTests.filePath !== 'string' ||
-        typeof parsed.unitTests.code !== 'string') {
+    // Validate the structure of the parsed JSON
+    if (
+      typeof analysis !== 'object' ||
+      typeof analysis.summary !== 'string' ||
+      !Array.isArray(analysis.edgeCases) ||
+      typeof analysis.unitTests !== 'object' ||
+      typeof analysis.unitTests.filePath !== 'string' ||
+      typeof analysis.unitTests.code !== 'string'
+    ) {
       throw new Error("Invalid JSON structure from Claude API");
     }
-// Check if we got an error result
+    
+    return analysis as ReviewResult;
+
+  } catch (error) {
+    // Proper error handling, logging generic soft error
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return { 
+      error: `Claude API analysis failed: ${errorMessage}` 
+    };
+  }
+}
+
+
+// The POST handler now manages all HTTP request and response logic
+export async function POST(request: Request): Promise<Response> {
+  try {
+    const body = await request.json();
+    const { diff } = body;
+    
+    if (!diff || typeof diff !== 'string' || diff.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'Valid diff string is required' }, 
+        { status: 400 }
+      );
+    }
+    
+    // Get the result from the API utility function
+    const analysis = await callClaudeAPI(diff);
+    
+    // Check if the utility function returned an error object
     if ('error' in analysis) {
       return NextResponse.json(analysis, { status: 500 });
     }
     
-    // Format the review as markdown
+    // --- Formatting logic now lives in the POST handler ---
     const formatted = `### 🛡️ Solon AI Review
 
-**Summary:** 
-${analysis.summary}
+**Summary:** ${analysis.summary}
 
 **Edge Cases:**
 ${analysis.edgeCases.map(ec => `- ${ec}`).join('\n')}
@@ -133,50 +160,20 @@ ${analysis.edgeCases.map(ec => `- ${ec}`).join('\n')}
 \`\`\`typescript
 // ${analysis.unitTests.filePath}
 ${analysis.unitTests.code}
-\`\`\``;
-    
-    // Return successful analysis with formatted version
+\`\`\`
+`;
+
+    // Return a successful response with the original and formatted data
     return NextResponse.json({
       summary: analysis.summary,
       edgeCases: analysis.edgeCases,
       unitTests: analysis.unitTests,
       formatted: formatted
     });
-    // Return structured error instead of throwing
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    return { 
-      error: `Claude API analysis failed: ${errorMessage}` 
-    };
-  }
-}
 
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const { diff } = body;
-    
-    // Improved validation
-    if (!diff || typeof diff !== 'string' || diff.trim().length === 0) {
-      return NextResponse.json(
-        { error: 'Valid diff string is required' }, 
-        { status: 400 }
-      );
-    }
-    
-    const analysis = await callClaudeAPI(diff);
-    
-    // Check if we got an error result
-    if ('error' in analysis) {
-      return NextResponse.json(analysis, { status: 500 });
-    }
-    
-    // Return successful analysis
-    return NextResponse.json(analysis);
-    
   } catch (error) {
     console.error("POST handler error:", error);
     
-    // More specific error handling
     if (error instanceof SyntaxError) {
       return NextResponse.json(
         { error: "Invalid JSON in request body" }, 
