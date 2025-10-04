@@ -61,3 +61,10 @@ jobs:
           body: |
             ### 🛡️ Solon AI Review
             **Summary:** ${{ fromJson(steps.call_api.outputs.comment_body).summary }}
+
+            **Edge Cases:**
+            ${{ join(fromJson(steps.call_api.outputs.comment_body).edgeCases, '\n- ') }}
+            
+            **Suggested Unit Tests:**
+            ```${{ fromJson(steps.call_api.outputs.comment_body).unitTests.filePath }}
+               ${{ fromJson(steps.call_api.outputs.comment_body).unitTests.code }}
