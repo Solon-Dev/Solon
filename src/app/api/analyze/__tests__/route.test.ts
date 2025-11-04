@@ -93,4 +93,53 @@ describe('POST /api/analyze', () => {
     expect(response.status).toBe(500);
     expect(body.error).toContain('Claude API analysis failed');
   });
+
+  it('should return a 500 error if the Claude API returns invalid JSON', async () => {
+    // Mock the Anthropic SDK to return invalid JSON
+    const Anthropic = require('@anthropic-ai/sdk');
+    Anthropic.mockImplementation(() => {
+      return {
+        messages: {
+          create: jest.fn().mockResolvedValue({
+            content: [
+              {
+                type: 'text',
+                text: 'This is not JSON',
+              },
+            ],
+          }),
+        },
+      };
+    });
+
+    const request = new Request('http://localhost/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ diff: 'test diff' }),
+    });
+
+    const { POST } = require('../route');
+    const response = await POST(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(body.error).toContain('Claude API analysis failed');
+  });
+
+  it('should return a 500 error if the ANTHROPIC_API_KEY is not set', async () => {
+    delete process.env.ANTHROPIC_API_KEY;
+
+    const request = new Request('http://localhost/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ diff: 'test diff' }),
+    });
+
+    const { POST } = require('../route');
+    const response = await POST(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(body.error).toContain('ANTHROPIC_API_KEY environment variable is not set');
+  });
 });
