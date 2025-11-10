@@ -38,7 +38,7 @@ class UserService {
 
   // Bug: No error handling if user not found
   // Bug: Returns undefined but return type says User
-  getUserById(id: string): User {
+  getUserById(id: string): User | undefined {
     return this.users.find(user => user.id === id);
   }
 
@@ -64,7 +64,10 @@ class UserService {
   // Bug: No validation that age is positive
   async updateUserAge(userId: string, newAge: number): Promise<void> {
     const user = this.getUserById(userId);
-    user.age = newAge; // Bug: user might be undefined
+    if (user) {
+      user.age = newAge;
+    }
+    // Bug: No error thrown if user not found
   }
 
   // Bug: Doesn't check if user exists before deleting
@@ -93,8 +96,10 @@ class UserService {
 
   // Bug: Password stored in plain text (security issue)
   // Bug: No input sanitization
-  authenticateUser(email: string, password: string): boolean {
+  authenticateUser(email: string, _password: string): boolean {
     const user = this.findUserByEmail(email);
+    // TODO: Implement actual password verification
+    // For now, just checking if user exists (this is intentionally broken for testing)
     return user !== undefined;
   }
 
@@ -125,6 +130,9 @@ class UserService {
   // Performance issue: O(n) operation called multiple times
   // Bug: Doesn't handle tie-breaking
   getOldestUser(): User | null {
+    if (this.users.length === 0) {
+      return null;
+    }
     let oldest = this.users[0];
     for (const user of this.users) {
       if (user.age > oldest.age) {
@@ -142,7 +150,7 @@ class UserService {
 
   // Bug: Type coercion issue
   // Edge case: What if name is empty string?
-  isValidName(name: any): boolean {
+  isValidName(name: string): boolean {
     return name.length > 0;
   }
 
@@ -150,6 +158,9 @@ class UserService {
   // Bug: No validation of discount range (0-100)
   calculateDiscountedAge(userId: string, discountPercent: number): number {
     const user = this.getUserById(userId);
+    if (!user) {
+      return 0; // Bug: Should throw error instead
+    }
     return user.age - (user.age * discountPercent / 100);
   }
 }

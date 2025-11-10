@@ -54,8 +54,8 @@ jobs:
       - name: 'Post or Update AI Review Comment'
         uses: peter-evans/create-or-update-comment@v4
         with:
-    token: ${{ steps.app-token.outputs.token }}
-    issue-number: ${{ github.event.pull_request.number }}
-    comment-id: ${{ steps.find-comment.outputs.comment-id }}
-    edit-mode: replace
-    body: ${{ fromJson(steps.call_api.outputs.comment_body).formatted }}
+          token: ${{ steps.app-token.outputs.token }}
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          edit-mode: replace
+          body: ${{ fromJson(steps.call_api.outputs.comment_body).formatted }}
