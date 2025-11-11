@@ -73,7 +73,7 @@ async function callClaudeAPI(diff: string): Promise<ReviewResult | ErrorResult> 
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: "claude-3-5-sonnet-20241022",
+        model: "claude-3-5-sonnet-20250514",
         max_tokens: 4096,
         temperature: 0.1,
         messages: [{ role: "user", content: finalPrompt }]
