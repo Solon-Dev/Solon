@@ -48,13 +48,18 @@ interface ReviewResult {
 
 interface ErrorResult {
   error: string;
+  details?: string;
+  stack?: string;
 }
 
 // This function now ONLY handles fetching and parsing from the API
 async function callClaudeAPI(diff: string): Promise<ReviewResult | ErrorResult> {
   try {
     if (!process.env.ANTHROPIC_API_KEY) {
-      throw new Error("ANTHROPIC_API_KEY environment variable is not set");
+      return { 
+        error: "ANTHROPIC_API_KEY environment variable is not set",
+        details: "Configuration error"
+      };
     }
 
     const finalPrompt = masterPrompt.replace('{raw_git_diff_string}', diff);
@@ -77,14 +82,20 @@ async function callClaudeAPI(diff: string): Promise<ReviewResult | ErrorResult> 
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Anthropic API error: ${response.status} - ${errorText}`);
+      return { 
+        error: `Anthropic API error: ${response.status}`,
+        details: errorText
+      };
     }
 
     const data = await response.json();
     
     const responseBlock = data.content[0];
     if (responseBlock.type !== 'text') {
-      throw new Error("Unexpected response type from Claude API");
+      return { 
+        error: "Unexpected response type from Claude API",
+        details: `Got type: ${responseBlock.type}`
+      };
     }
 
     const responseText = responseBlock.text.trim();
@@ -92,7 +103,10 @@ async function callClaudeAPI(diff: string): Promise<ReviewResult | ErrorResult> 
     // Robust JSON extraction logic
     const openBrace = responseText.indexOf('{');
     if (openBrace === -1) {
-      throw new Error("No JSON object found in Claude response");
+      return { 
+        error: "No JSON object found in Claude response",
+        details: responseText.substring(0, 200)
+      };
     }
     
     let braceCount = 0;
@@ -111,7 +125,10 @@ async function callClaudeAPI(diff: string): Promise<ReviewResult | ErrorResult> 
     }
     
     if (closeBrace === -1) {
-      throw new Error("Malformed JSON in Claude response");
+      return { 
+        error: "Malformed JSON in Claude response",
+        details: responseText.substring(0, 200)
+      };
     }
     
     const jsonContent = responseText.substring(openBrace, closeBrace + 1);
@@ -127,16 +144,20 @@ async function callClaudeAPI(diff: string): Promise<ReviewResult | ErrorResult> 
       typeof analysis.unitTests.filePath !== 'string' ||
       typeof analysis.unitTests.code !== 'string'
     ) {
-      throw new Error("Invalid JSON structure from Claude API");
+      return { 
+        error: "Invalid JSON structure from Claude API",
+        details: JSON.stringify(analysis)
+      };
     }
     
     return analysis as ReviewResult;
 
   } catch (error) {
-    // Proper error handling, logging generic soft error
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    const errorStack = error instanceof Error ? error.stack : undefined;
     return { 
-      error: `Claude API analysis failed: ${errorMessage}` 
+      error: `Claude API analysis failed: ${errorMessage}`,
+      stack: errorStack
     };
   }
 }
@@ -145,12 +166,23 @@ async function callClaudeAPI(diff: string): Promise<ReviewResult | ErrorResult> 
 // The POST handler now manages all HTTP request and response logic
 export async function POST(request: Request): Promise<Response> {
   try {
+    // Return diagnostic info first
+    const diagnostics = {
+      timestamp: new Date().toISOString(),
+      hasApiKey: !!process.env.ANTHROPIC_API_KEY,
+      runtime: process.env.VERCEL_REGION || 'local',
+      nodeVersion: process.version
+    };
+
     const body = await request.json();
     const { diff } = body;
     
     if (!diff || typeof diff !== 'string' || diff.trim().length === 0) {
       return NextResponse.json(
-        { error: 'Valid diff string is required' }, 
+        { 
+          error: 'Valid diff string is required',
+          diagnostics 
+        }, 
         { status: 400 }
       );
     }
@@ -160,7 +192,10 @@ export async function POST(request: Request): Promise<Response> {
     
     // Check if the utility function returned an error object
     if ('error' in analysis) {
-      return NextResponse.json(analysis, { status: 500 });
+      return NextResponse.json({
+        ...analysis,
+        diagnostics
+      }, { status: 500 });
     }
     
     // --- Formatting logic now lives in the POST handler ---
@@ -183,21 +218,24 @@ ${analysis.unitTests.code}
       summary: analysis.summary,
       edgeCases: analysis.edgeCases,
       unitTests: analysis.unitTests,
-      formatted: formatted
+      formatted: formatted,
+      diagnostics
     });
 
   } catch (error) {
-    console.error("POST handler error:", error);
-    
-    if (error instanceof SyntaxError) {
-      return NextResponse.json(
-        { error: "Invalid JSON in request body" }, 
-        { status: 400 }
-      );
-    }
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
     
     return NextResponse.json(
-      { error: "Internal server error" }, 
+      { 
+        error: "Internal server error",
+        details: errorMessage,
+        stack: errorStack,
+        diagnostics: {
+          timestamp: new Date().toISOString(),
+          hasApiKey: !!process.env.ANTHROPIC_API_KEY
+        }
+      }, 
       { status: 500 }
     );
   }
