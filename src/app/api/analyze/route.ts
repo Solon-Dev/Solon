@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 
+// Force Node.js runtime for Anthropic SDK compatibility
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 const masterPrompt = `
 You are Solon, an expert code reviewer specializing in JavaScript and TypeScript.
 
