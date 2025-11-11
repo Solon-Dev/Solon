@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
 
-// Force Node.js runtime for Anthropic SDK compatibility
+// Force Node.js runtime for better compatibility
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -58,20 +57,32 @@ async function callClaudeAPI(diff: string): Promise<ReviewResult | ErrorResult> 
       throw new Error("ANTHROPIC_API_KEY environment variable is not set");
     }
 
-    const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
-
     const finalPrompt = masterPrompt.replace('{raw_git_diff_string}', diff);
     
-    const response = await anthropic.messages.create({
-      model: "claude-3-sonnet-20240229", // Using a stable model name
-      max_tokens: 4096,
-      temperature: 0.1,
-      messages: [{ role: "user", content: finalPrompt }],
+    // Use fetch instead of SDK to avoid Vercel compatibility issues
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: "claude-3-5-sonnet-20241022",
+        max_tokens: 4096,
+        temperature: 0.1,
+        messages: [{ role: "user", content: finalPrompt }]
+      })
     });
 
-    const responseBlock = response.content[0];
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Anthropic API error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    
+    const responseBlock = data.content[0];
     if (responseBlock.type !== 'text') {
       throw new Error("Unexpected response type from Claude API");
     }
