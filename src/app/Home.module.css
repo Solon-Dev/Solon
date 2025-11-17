@@ -297,7 +297,7 @@
   color: #64748b;
 }
 
-/* BYOK Explainer */
+/* BYOK Explainer - IMPROVED CONTRAST */
 .byokExplainer {
   margin-top: 60px;
   text-align: center;
@@ -331,14 +331,14 @@
 
 .byokStep h4 {
   font-size: 18px;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   color: #1e293b;
   font-weight: 600;
 }
 
 .byokStep p {
-  font-size: 14px;
-  color: #64748b;
+  font-size: 15px;
+  color: #475569;
   line-height: 1.6;
 }
 
@@ -349,7 +349,7 @@
 
 .byokNote p {
   font-size: 15px;
-  color: #475569;
+  color: #334155;
   line-height: 1.6;
   max-width: 700px;
   margin: 0 auto;
@@ -393,7 +393,7 @@
   opacity: 0.9 !important;
 }
 
-/* Footer */
+/* Footer - FIXED */
 .footer {
   background: #f8fafc;
   padding: 48px 0;
