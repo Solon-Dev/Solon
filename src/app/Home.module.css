@@ -97,7 +97,7 @@
 .subtext {
   margin-top: 24px !important;
   font-size: 16px !important;
-  color: #64748b !important;
+  color: #000000 !important;
 }
 
 /* Screenshot Section */
@@ -265,7 +265,7 @@
 .pricingSubtext {
   font-size: 14px !important;
   margin-bottom: 24px !important;
-  color: #64748b !important;
+  color: #000000 !important;
 }
 
 .pricingCard ul {
