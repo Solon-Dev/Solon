@@ -140,9 +140,7 @@ async function callClaudeAPI(diff: string): Promise<ReviewResult | ErrorResult> 
       typeof analysis !== 'object' ||
       typeof analysis.summary !== 'string' ||
       !Array.isArray(analysis.edgeCases) ||
-      typeof analysis.unitTests !== 'object' ||
-      typeof analysis.unitTests.filePath !== 'string' ||
-      typeof analysis.unitTests.code !== 'string'
+      typeof analysis.unitTests !== 'object'
     ) {
       return { 
         error: "Invalid JSON structure from Claude API",
