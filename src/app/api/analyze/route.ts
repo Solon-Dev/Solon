@@ -1,11 +1,58 @@
 import { NextResponse } from 'next/server';
+import { loadEnabledPlaybooks } from '@/lib/config/loadPlaybookConfig';
+import { Playbook } from '@/lib/playbooks/types';
 
 // Force Node.js runtime for better compatibility
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const masterPrompt = `
+/**
+ * Generate the master prompt with optional playbook integration
+ */
+function buildMasterPrompt(playbooks: Playbook[]): string {
+  const hasPlaybooks = playbooks.length > 0;
+
+  let playbooksSection = '';
+  if (hasPlaybooks) {
+    playbooksSection = `
+CRITICAL: Check this PR against the following team standards:
+
+${playbooks.map(playbook => `
+### ${playbook.name} Standards
+${playbook.description}
+
+${playbook.rules.map(rule => {
+  const severityEmoji = rule.severity === 'blocking' ? '🚫' : rule.severity === 'warning' ? '⚠️' : 'ℹ️';
+  let ruleText = `- **[${severityEmoji} ${rule.severity.toUpperCase()}]** ${rule.description}`;
+
+  if (rule.examples) {
+    if (rule.examples.violation) {
+      ruleText += `\n  ❌ Violation: \`${rule.examples.violation}\``;
+    }
+    if (rule.examples.correct) {
+      ruleText += `\n  ✅ Correct: \`${rule.examples.correct}\``;
+    }
+  }
+
+  return ruleText;
+}).join('\n')}
+`).join('\n')}
+
+For each standard:
+1. Review if the PR code affects this area
+2. Check for compliance with the rule
+3. If violations found: cite specific file names and line numbers, explain the issue, and suggest fixes
+4. Use these status indicators:
+   - ✅ Passing (no violations found)
+   - ⚠️ Warning (minor issues or suggestions)
+   - 🚫 Blocking (must be fixed before merge)
+`;
+  }
+
+  return `
 You are Solon, an expert code reviewer specializing in JavaScript and TypeScript.
+
+${hasPlaybooks ? playbooksSection : ''}
 
 Analyze the following git diff and provide a thorough code review focusing on:
 - Bugs and logic errors
@@ -17,6 +64,7 @@ Analyze the following git diff and provide a thorough code review focusing on:
 Your response MUST be valid JSON with this exact structure:
 {
   "summary": "A concise 2-3 sentence analysis of the code changes",
+  ${hasPlaybooks ? '"playbookResults": "Formatted markdown section with playbook check results. For each playbook, show rule-by-rule compliance status with file/line citations for violations",' : ''}
   "edgeCases": ["edge case 1", "edge case 2"],
   "unitTests": {
     "filePath": "path/to/test/file.test.js",
@@ -29,6 +77,8 @@ Requirements:
 - Identify actual issues, not just style preferences
 - Generate complete, runnable unit tests using Jest syntax
 - If no significant issues found, acknowledge good practices
+${hasPlaybooks ? '- For playbookResults: Format as clear markdown with headings, checkboxes, and code examples. Include file paths and line numbers for all violations. Use \\n for line breaks within the string value' : ''}
+- Return ONLY valid JSON - use escaped newlines (\\n) not literal newlines in string values
 - Return ONLY the JSON object, no markdown or additional text
 
 Git diff to analyze:
@@ -36,9 +86,11 @@ Git diff to analyze:
 {raw_git_diff_string}
 </diff>
 `;
+}
 
 interface ReviewResult {
   summary: string;
+  playbookResults?: string; // Optional - only present when playbooks are enabled
   edgeCases: string[];
   unitTests: {
     filePath: string;
@@ -53,15 +105,16 @@ interface ErrorResult {
 }
 
 // This function now ONLY handles fetching and parsing from the API
-async function callClaudeAPI(diff: string): Promise<ReviewResult | ErrorResult> {
+async function callClaudeAPI(diff: string, playbooks: Playbook[]): Promise<ReviewResult | ErrorResult> {
   try {
     if (!process.env.ANTHROPIC_API_KEY) {
-      return { 
+      return {
         error: "ANTHROPIC_API_KEY environment variable is not set",
         details: "Configuration error"
       };
     }
 
+    const masterPrompt = buildMasterPrompt(playbooks);
     const finalPrompt = masterPrompt.replace('{raw_git_diff_string}', diff);
     
     // Use fetch instead of SDK to avoid Vercel compatibility issues
@@ -132,7 +185,7 @@ async function callClaudeAPI(diff: string): Promise<ReviewResult | ErrorResult> 
     }
     
     const jsonContent = responseText.substring(openBrace, closeBrace + 1);
-    
+
     const analysis = JSON.parse(jsonContent);
     
     // Validate the structure of the parsed JSON
@@ -174,19 +227,23 @@ export async function POST(request: Request): Promise<Response> {
 
     const body = await request.json();
     const { diff } = body;
-    
+
     if (!diff || typeof diff !== 'string' || diff.trim().length === 0) {
       return NextResponse.json(
-        { 
+        {
           error: 'Valid diff string is required',
-          diagnostics 
-        }, 
+          diagnostics
+        },
         { status: 400 }
       );
     }
-    
+
+    // Load enabled playbooks from configuration
+    const playbooks = await loadEnabledPlaybooks();
+    console.log(`Loaded ${playbooks.length} playbooks:`, playbooks.map(p => p.name).join(', '));
+
     // Get the result from the API utility function
-    const analysis = await callClaudeAPI(diff);
+    const analysis = await callClaudeAPI(diff, playbooks);
     
     // Check if the utility function returned an error object
     if ('error' in analysis) {
@@ -197,10 +254,21 @@ export async function POST(request: Request): Promise<Response> {
     }
     
     // --- Formatting logic now lives in the POST handler ---
-    const formatted = `### 🛡️ Solon AI Review
+    let formatted = `### 🛡️ Solon AI Review
 
 **Summary:** ${analysis.summary}
+`;
 
+    // Add playbook results section if present
+    if (analysis.playbookResults) {
+      formatted += `
+## 🎯 Team Standards Check
+
+${analysis.playbookResults}
+`;
+    }
+
+    formatted += `
 **Edge Cases:**
 ${analysis.edgeCases.map(ec => `- ${ec}`).join('\n')}
 
@@ -214,6 +282,7 @@ ${analysis.unitTests.code}
     // Return a successful response with the original and formatted data
     return NextResponse.json({
       summary: analysis.summary,
+      playbookResults: analysis.playbookResults,
       edgeCases: analysis.edgeCases,
       unitTests: analysis.unitTests,
       formatted: formatted,
