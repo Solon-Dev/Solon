@@ -15,7 +15,7 @@ export default function Home() {
         <div className={styles.container}>
           <div className={styles.badge}>Free Forever with BYOK</div>
           <h1>AI Code Reviews in 30 Seconds</h1>
-          <p>Automate code quality checks on every pull request. Catch bugs, identify edge cases, and generate unit tests instantly. Pay only for what you use.</p>
+          <p>Automate code quality checks on every pull request. Catch bugs, identify edge cases, enforce team standards, and generate unit tests instantly. Pay only for what you use.</p>
           <div className={styles.heroButtons}>
             <a href="https://github.com/apps/solon-ai" className={styles.ctaButton}>Install Free</a>
             <a href="#pricing" className={`${styles.ctaButton} ${styles.ctaButtonSecondary}`}>See Pricing</a>
@@ -57,6 +57,11 @@ export default function Home() {
               <p>Automatically generates comprehensive unit tests covering both happy paths and edge cases.</p>
             </div>
             <div className={styles.featureCard}>
+              <div className={styles.featureIcon}>📋</div>
+              <h3>Team Playbooks</h3>
+              <p>Enforce custom standards with configurable playbooks. Includes presets for accessibility, security, and best practices with 23+ rules.</p>
+            </div>
+            <div className={styles.featureCard}>
               <div className={styles.featureIcon}>🔒</div>
               <h3>Your Key, Your Control</h3>
               <p>Use your own Anthropic API key. Your code stays private. You control costs. Uninstall anytime.</p>
@@ -95,6 +100,7 @@ export default function Home() {
                 <li>Automated bug detection</li>
                 <li>Edge case identification</li>
                 <li>Unit test generation</li>
+                <li><strong>Team Playbooks</strong> for standards enforcement</li>
                 <li>Get <strong>$5 free credit</strong> from Anthropic (~80 reviews)</li>
                 <li>No monthly fees</li>
                 <li>No vendor lock-in</li>
