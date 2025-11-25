@@ -7,7 +7,7 @@
  * - Best Practices (code quality)
  */
 
-import { Playbook, PlaybookRule } from './types';
+import { Playbook } from './types';
 
 /**
  * ACCESSIBILITY PLAYBOOK
