@@ -1,12 +1,30 @@
 "use client"
 import styles from './Home.module.css';
+import Link from 'next/link';
 
 export default function Home() {
   return (
     <>
       <header>
-        <nav className={styles.container}>
+        <nav className={styles.container} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
           <div className={styles.logo}>🛡️ Solon AI</div>
+          
+          {/* Navigation links - visible on desktop */}
+          <div style={{display: 'none'}} className="desktop-nav">
+            <style jsx>{`
+              @media (min-width: 768px) {
+                .desktop-nav {
+                  display: flex !important;
+                  gap: 2rem;
+                  align-items: center;
+                }
+              }
+            `}</style>
+            <Link href="/privacy" style={{color: '#1e293b', textDecoration: 'none', fontWeight: 500, fontSize: '0.95rem'}}>Privacy</Link>
+            <Link href="/terms" style={{color: '#1e293b', textDecoration: 'none', fontWeight: 500, fontSize: '0.95rem'}}>Terms</Link>
+            <a href="mailto:solonaisupport@gmail.com" style={{color: '#1e293b', textDecoration: 'none', fontWeight: 500, fontSize: '0.95rem'}}>Contact</a>
+          </div>
+
           <a href="https://github.com/apps/solon-ai" className={styles.ctaButton}>Install on GitHub</a>
         </nav>
       </header>
@@ -15,7 +33,7 @@ export default function Home() {
         <div className={styles.container}>
           <div className={styles.badge}>Free Forever with BYOK</div>
           <h1>AI Code Reviews in 30 Seconds</h1>
-          <p>Automate code quality checks on every pull request. Catch bugs, identify edge cases, and generate unit tests instantly. Pay only for what you use.</p>
+          <p>Automate code quality checks on every pull request. Catch bugs, identify edge cases, enforce team standards, and generate unit tests instantly. Pay only for what you use.</p>
           <div className={styles.heroButtons}>
             <a href="https://github.com/apps/solon-ai" className={styles.ctaButton}>Install Free</a>
             <a href="#pricing" className={`${styles.ctaButton} ${styles.ctaButtonSecondary}`}>See Pricing</a>
@@ -57,6 +75,11 @@ export default function Home() {
               <p>Automatically generates comprehensive unit tests covering both happy paths and edge cases.</p>
             </div>
             <div className={styles.featureCard}>
+              <div className={styles.featureIcon}>📋</div>
+              <h3>Team Playbooks</h3>
+              <p>Enforce custom standards with configurable playbooks. Includes presets for accessibility, security, and best practices with 23+ rules.</p>
+            </div>
+            <div className={styles.featureCard}>
               <div className={styles.featureIcon}>🔒</div>
               <h3>Your Key, Your Control</h3>
               <p>Use your own Anthropic API key. Your code stays private. You control costs. Uninstall anytime.</p>
@@ -95,6 +118,7 @@ export default function Home() {
                 <li>Automated bug detection</li>
                 <li>Edge case identification</li>
                 <li>Unit test generation</li>
+                <li><strong>Team Playbooks</strong> for standards enforcement</li>
                 <li>Get <strong>$5 free credit</strong> from Anthropic (~80 reviews)</li>
                 <li>No monthly fees</li>
                 <li>No vendor lock-in</li>
@@ -107,28 +131,28 @@ export default function Home() {
           </div>
           
           <div style={{marginTop: '3rem', textAlign: 'center', padding: '2rem', background: '#f9fafb', borderRadius: '0.5rem'}}>
-            <h3 style={{marginBottom: '1rem'}}>How BYOK Works</h3>
+            <h3 style={{marginBottom: '1rem', color: '#000'}}>How BYOK Works</h3>
             <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem', marginTop: '2rem'}}>
               <div>
                 <div style={{fontSize: '2rem', marginBottom: '0.5rem'}}>1️⃣</div>
-                <h4>Get API Key</h4>
-                <p style={{fontSize: '0.875rem', opacity: 0.8}}>Sign up at console.anthropic.com and get your free API key with $5 credit</p>
+                <h4 style={{color: '#000'}}>Get API Key</h4>
+                <p style={{fontSize: '0.875rem', color: '#000'}}>Sign up at console.anthropic.com and get your free API key with $5 credit</p>
               </div>
               <div>
                 <div style={{fontSize: '2rem', marginBottom: '0.5rem'}}>2️⃣</div>
-                <h4>Add to Repo</h4>
-                <p style={{fontSize: '0.875rem', opacity: 0.8}}>Store your API key in GitHub repository secrets (stays private)</p>
+                <h4 style={{color: '#000'}}>Add to Repo</h4>
+                <p style={{fontSize: '0.875rem', color: '#000'}}>Store your API key in GitHub repository secrets (stays private)</p>
               </div>
               <div>
                 <div style={{fontSize: '2rem', marginBottom: '0.5rem'}}>3️⃣</div>
-                <h4>Install & Go</h4>
-                <p style={{fontSize: '0.875rem', opacity: 0.8}}>Install Solon AI and start getting reviews on every PR</p>
+                <h4 style={{color: '#000'}}>Install & Go</h4>
+                <p style={{fontSize: '0.875rem', color: '#000'}}>Install Solon AI and start getting reviews on every PR</p>
               </div>
             </div>
           </div>
 
           <div style={{marginTop: '2rem', textAlign: 'center'}}>
-            <p style={{fontSize: '0.875rem', opacity: 0.8}}>
+            <p style={{fontSize: '0.875rem', color: '#000'}}>
               <strong>Why BYOK?</strong> You control costs, maintain privacy, and avoid vendor lock-in. 
               Pay only for what you use - no monthly subscriptions or commitments.
             </p>
@@ -151,8 +175,11 @@ export default function Home() {
         <div className={styles.container}>
           <p>&copy; 2025 Solon AI. Built with ❤️ using Claude AI by Anthropic</p>
           <p style={{marginTop: '0.5rem', fontSize: '0.875rem'}}>
-            <a href="https://github.com/Solon-Dev/Solon/blob/main/PRIVACY.md" style={{marginRight: '1rem'}}>Privacy Policy</a>
-            <a href="https://github.com/Solon-Dev/Solon/blob/main/TERMS.md">Terms of Service</a>
+            <Link href="/privacy" style={{marginRight: '1rem', color: '#2563eb'}}>Privacy Policy</Link>
+            <span style={{marginRight: '1rem', color: '#cbd5e1'}}>•</span>
+            <Link href="/terms" style={{marginRight: '1rem', color: '#2563eb'}}>Terms of Service</Link>
+            <span style={{marginRight: '1rem', color: '#cbd5e1'}}>•</span>
+            <a href="mailto:solonaisupport@gmail.com" style={{color: '#2563eb'}}>Contact</a>
           </p>
         </div>
       </footer>
