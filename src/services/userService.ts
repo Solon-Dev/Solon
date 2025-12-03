@@ -96,7 +96,8 @@ class UserService {
 
   // Bug: Password stored in plain text (security issue)
   // Bug: No input sanitization
-  authenticateUser(email: string, _password: string): boolean {
+  // Bug: Password parameter removed - not validating credentials at all!
+  authenticateUser(email: string): boolean {
     const user = this.findUserByEmail(email);
     // TODO: Implement actual password verification
     // For now, just checking if user exists (this is intentionally broken for testing)
