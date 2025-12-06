@@ -39,7 +39,7 @@ export default function PrivacyPolicy() {
             <h2 style={{fontSize: '1.5rem', fontWeight: 600, marginBottom: '1rem', color: '#1e293b'}}>How It Works</h2>
             <ol style={{color: '#475569', lineHeight: 1.8, paddingLeft: '1.5rem'}}>
               <li>When you open a pull request, GitHub Actions triggers our service</li>
-              <li>Your code diff is sent directly from your repository to Anthropic's API using <strong>your own API key</strong></li>
+              <li>Your code diff is sent directly from your repository to Anthropic&apos;s API using <strong>your own API key</strong></li>
               <li>The AI analysis is returned and posted as a comment</li>
               <li><strong>No data passes through or is stored by Solon AI</strong></li>
             </ol>
@@ -117,7 +117,7 @@ export default function PrivacyPolicy() {
 
           <div style={{borderTop: '1px solid #e2e8f0', paddingTop: '2rem', marginTop: '3rem'}}>
             <p style={{fontSize: '0.875rem', color: '#64748b', fontStyle: 'italic'}}>
-              <strong>TL;DR:</strong> We don't collect or store anything. Your code goes from your repo → Anthropic's API (using your key) → back to your repo as a comment. That's it.
+              <strong>TL;DR:</strong> We don&apos;t collect or store anything. Your code goes from your repo → Anthropic&apos;s API (using your key) → back to your repo as a comment. That&apos;s it.
             </p>
           </div>
         </div>

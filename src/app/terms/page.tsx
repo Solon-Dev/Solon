@@ -66,7 +66,7 @@ export default function TermsOfService() {
           <section style={{marginBottom: '2.5rem'}}>
             <h2 style={{fontSize: '1.5rem', fontWeight: 600, marginBottom: '1rem', color: '#1e293b'}}>Service Availability</h2>
             <p style={{color: '#475569', lineHeight: 1.7, marginBottom: '0.5rem'}}>
-              We provide Solon AI "as is" without warranties. While we strive for reliability, we cannot guarantee:
+              We provide Solon AI &quot;as is&quot; without warranties. While we strive for reliability, we cannot guarantee:
             </p>
             <ul style={{color: '#475569', lineHeight: 1.8, paddingLeft: '1.5rem'}}>
               <li>Uninterrupted service</li>
@@ -108,7 +108,7 @@ export default function TermsOfService() {
               You may not use Solon AI to:
             </p>
             <ul style={{color: '#475569', lineHeight: 1.8, paddingLeft: '1.5rem'}}>
-              <li>Review code you don't have permission to access</li>
+              <li>Review code you don&apos;t have permission to access</li>
               <li>Violate any laws or regulations</li>
               <li>Reverse engineer or copy the service</li>
               <li>Abuse or overload the service</li>
@@ -138,14 +138,14 @@ export default function TermsOfService() {
           <section style={{marginBottom: '2.5rem'}}>
             <h2 style={{fontSize: '1.5rem', fontWeight: 600, marginBottom: '1rem', color: '#1e293b'}}>Changes to Terms</h2>
             <p style={{color: '#475569', lineHeight: 1.7}}>
-              We may update these terms. Continued use after changes constitutes acceptance. We'll notify users of material changes.
+              We may update these terms. Continued use after changes constitutes acceptance. We&apos;ll notify users of material changes.
             </p>
           </section>
 
           <section style={{marginBottom: '2.5rem'}}>
             <h2 style={{fontSize: '1.5rem', fontWeight: 600, marginBottom: '1rem', color: '#1e293b'}}>Open Source</h2>
             <p style={{color: '#475569', lineHeight: 1.7}}>
-              Solon AI's code is open source. See our{' '}
+              Solon AI&apos;s code is open source. See our{' '}
               <a 
                 href="https://github.com/DontaRuffin/solon-ai" 
                 style={{color: '#2563eb', textDecoration: 'none'}}

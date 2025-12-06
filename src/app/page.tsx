@@ -1,6 +1,7 @@
 "use client"
 import styles from './Home.module.css';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function Home() {
   return (
@@ -47,7 +48,13 @@ export default function Home() {
       <section className={styles.screenshot}>
         <div className={styles.container}>
           <div className={styles.screenshotContainer}>
-            <img src="https://via.placeholder.com/900x600/f3f4f6/2563eb?text=Solon+AI+Review+Screenshot" alt="Solon AI in action" />
+            <Image
+              src="https://via.placeholder.com/900x600/f3f4f6/2563eb?text=Solon+AI+Review+Screenshot"
+              alt="Solon AI in action"
+              width={900}
+              height={600}
+              priority
+            />
           </div>
         </div>
       </section>

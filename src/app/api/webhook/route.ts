@@ -1,4 +1,4 @@
-export async function POST(request: Request) {
+export async function POST() {
   // For marketplace listing only - not actually used
   return new Response(JSON.stringify({ received: true }), {
     status: 200,
