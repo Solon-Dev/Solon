@@ -131,7 +131,7 @@ export default function PrivacyPolicy() {
             <span style={{marginRight: '1rem', color: '#cbd5e1'}}>•</span>
             <Link href="/terms" style={{marginRight: '1rem', color: '#2563eb'}}>Terms of Service</Link>
             <span style={{marginRight: '1rem', color: '#cbd5e1'}}>•</span>
-            <a href="mailto:solonaisupport@gmail.com" style={{color: '#2563eb'}}>Contact</a>
+            <a href="mailto:donta.ruffin@gmail.com" style={{color: '#2563eb'}}>Contact</a>
           </p>
         </div>
       </footer>
