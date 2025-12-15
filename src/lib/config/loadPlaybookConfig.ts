@@ -17,6 +17,11 @@ const DEFAULT_CONFIG: PlaybookConfig = {
   playbooks: ['accessibility', 'security', 'best-practices']
 };
 
+// Simple in-memory cache
+let cachedConfig: PlaybookConfig | null = null;
+let lastLoadTime = 0;
+const CACHE_TTL = 60 * 1000; // 1 minute
+
 /**
  * Load playbook configuration from repository root
  * Looks for .solon.config.json in the project root directory
@@ -24,6 +29,11 @@ const DEFAULT_CONFIG: PlaybookConfig = {
  * @returns PlaybookConfig object with enabled playbook names
  */
 export async function loadPlaybookConfig(): Promise<PlaybookConfig> {
+  const now = Date.now();
+  if (cachedConfig && (now - lastLoadTime < CACHE_TTL)) {
+    return cachedConfig;
+  }
+
   try {
     // Try to read config file from project root
     const configPath = path.join(process.cwd(), '.solon.config.json');
@@ -33,6 +43,8 @@ export async function loadPlaybookConfig(): Promise<PlaybookConfig> {
     // Validate config structure
     if (!config.playbooks || !Array.isArray(config.playbooks)) {
       console.warn('Invalid .solon.config.json structure, using defaults');
+      cachedConfig = DEFAULT_CONFIG;
+      lastLoadTime = now;
       return DEFAULT_CONFIG;
     }
 
@@ -49,10 +61,14 @@ export async function loadPlaybookConfig(): Promise<PlaybookConfig> {
 
     if (validPlaybooks.length === 0) {
       console.warn('No valid playbooks in config, using defaults');
+      cachedConfig = DEFAULT_CONFIG;
+      lastLoadTime = now;
       return DEFAULT_CONFIG;
     }
 
-    return { playbooks: validPlaybooks };
+    cachedConfig = { playbooks: validPlaybooks };
+    lastLoadTime = now;
+    return cachedConfig;
   } catch (error) {
     // Config file doesn't exist or is invalid - use defaults
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
@@ -60,6 +76,8 @@ export async function loadPlaybookConfig(): Promise<PlaybookConfig> {
     } else {
       console.warn('Error reading .solon.config.json, using defaults:', error);
     }
+    cachedConfig = DEFAULT_CONFIG;
+    lastLoadTime = now;
     return DEFAULT_CONFIG;
   }
 }

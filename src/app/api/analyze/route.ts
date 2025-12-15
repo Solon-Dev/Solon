@@ -164,15 +164,31 @@ async function callClaudeAPI(diff: string, playbooks: Playbook[]): Promise<Revie
     
     let braceCount = 0;
     let closeBrace = -1;
+    let inString = false;
+    let escaped = false;
     
     for (let i = openBrace; i < responseText.length; i++) {
-      if (responseText[i] === '{') {
-        braceCount++;
-      } else if (responseText[i] === '}') {
-        braceCount--;
-        if (braceCount === 0) {
-          closeBrace = i;
-          break;
+      const char = responseText[i];
+
+      if (inString) {
+        if (escaped) {
+          escaped = false;
+        } else if (char === '\\') {
+          escaped = true;
+        } else if (char === '"') {
+          inString = false;
+        }
+      } else {
+        if (char === '"') {
+          inString = true;
+        } else if (char === '{') {
+          braceCount++;
+        } else if (char === '}') {
+          braceCount--;
+          if (braceCount === 0) {
+            closeBrace = i;
+            break;
+          }
         }
       }
     }
