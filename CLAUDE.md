@@ -7,7 +7,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Solon AI** (also called Aegis) is a GitHub App that provides automated AI-powered code reviews for pull requests. It uses Anthropic's Claude API to analyze git diffs and generate comprehensive feedback including:
 - Plain-English summaries of changes
 - Edge case detection and potential blind spots
-- Auto-generated Jest unit tests
+- Auto-generated unit tests in the appropriate testing framework
+- Language-specific best practices and security considerations
+
+**Supported Languages:**
+- **JavaScript/TypeScript**: Jest unit tests, Node.js best practices
+- **Python**: pytest unit tests, PEP 8 compliance, common security pitfalls
+- **Rust**: Built-in test framework, ownership/borrowing analysis, unsafe code review
+- **Mixed Projects**: Intelligent detection and language-appropriate analysis
 
 This is a Next.js 15 application with TypeScript, deployed via Vercel, and integrates with GitHub via GitHub Actions.
 
@@ -41,19 +48,23 @@ module.exports = {
 
 **API Route: `/api/analyze`** (`src/app/api/analyze/route.ts`)
 - Single POST endpoint that receives git diffs from GitHub Actions
-- Calls Claude API with a master prompt engineering template
+- Automatically detects programming language from diff (JavaScript/TypeScript/Python/Rust)
+- Calls Claude API with language-aware prompt engineering template
 - Returns structured JSON with: summary, edgeCases, and unitTests
 - Includes robust JSON extraction logic to handle malformed Claude responses
 - Uses `ANTHROPIC_API_KEY` environment variable
 
 **Key Functions:**
-- `callClaudeAPI(diff: string)`: Handles API communication and response parsing
+- `detectLanguageFromDiff(diff: string)`: Detects primary language from file extensions in diff
+- `buildMasterPrompt(playbooks, langConfig)`: Generates language-specific prompts
+- `callClaudeAPI(diff, playbooks, langConfig)`: Handles API communication and response parsing
 - `POST(request: Request)`: HTTP request handler, validates input and formats output
 
 **Services** (`src/services/`)
 - `userService.ts`: Example service with intentional bugs for testing Solon's review capabilities
 
 **Utilities** (`src/utils/`)
+- `languageDetector.ts`: Language detection and configuration for multi-language support
 - `math.ts`: Math utilities (e.g., `calculateAverage`)
 - `number.ts`: Number utilities
 

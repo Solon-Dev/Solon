@@ -1,15 +1,22 @@
 import { NextResponse } from 'next/server';
 import { loadEnabledPlaybooks } from '@/lib/config/loadPlaybookConfig';
 import { Playbook } from '@/lib/playbooks/types';
+import {
+  detectLanguageFromDiff,
+  getLanguageConfig,
+  getLanguageBestPractices,
+  getLanguageSecurityConsiderations,
+  type LanguageConfig
+} from '@/utils/languageDetector';
 
 // Force Node.js runtime for better compatibility
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
- * Generate the master prompt with optional playbook integration
+ * Generate the master prompt with optional playbook integration and language awareness
  */
-function buildMasterPrompt(playbooks: Playbook[]): string {
+function buildMasterPrompt(playbooks: Playbook[], langConfig: LanguageConfig): string {
   const hasPlaybooks = playbooks.length > 0;
 
   let playbooksSection = '';
@@ -49,8 +56,18 @@ For each standard:
 `;
   }
 
+  const bestPractices = getLanguageBestPractices(langConfig.language);
+  const securityConsiderations = getLanguageSecurityConsiderations(langConfig.language);
+
+  // Build test file path example based on language
+  const testFileExample = langConfig.language === 'rust'
+    ? 'src/lib.rs or tests/integration_test.rs'
+    : langConfig.language === 'python'
+    ? `tests/test_module${langConfig.testFileExtension}`
+    : `path/to/test/file${langConfig.testFileExtension}`;
+
   return `
-You are Solon, an expert code reviewer specializing in JavaScript and TypeScript.
+You are Solon, an expert code reviewer specializing in ${langConfig.expertise}.
 
 ${hasPlaybooks ? playbooksSection : ''}
 
@@ -61,21 +78,26 @@ Analyze the following git diff and provide a thorough code review focusing on:
 - Security vulnerabilities
 - Best practices and code quality
 
+Language-specific considerations for ${langConfig.expertise}:${bestPractices}
+
+Security focus areas:${securityConsiderations}
+
 Your response MUST be valid JSON with this exact structure:
 {
   "summary": "A concise 2-3 sentence analysis of the code changes",
   ${hasPlaybooks ? '"playbookResults": "Formatted markdown section with playbook check results. For each playbook, show rule-by-rule compliance status with file/line citations for violations",' : ''}
   "edgeCases": ["edge case 1", "edge case 2"],
   "unitTests": {
-    "filePath": "path/to/test/file.test.js",
-    "code": "complete unit test code with assertions"
+    "filePath": "${testFileExample}",
+    "code": "complete unit test code with assertions using ${langConfig.testFramework}"
   }
 }
 
 Requirements:
 - Provide actionable, specific feedback
 - Identify actual issues, not just style preferences
-- Generate complete, runnable unit tests using Jest syntax
+- Generate complete, runnable unit tests using ${langConfig.testFramework} syntax and idioms
+- For ${langConfig.language} code, follow ${langConfig.language}-specific conventions and best practices
 - If no significant issues found, acknowledge good practices
 ${hasPlaybooks ? '- For playbookResults: Format as clear markdown with headings, checkboxes, and code examples. Include file paths and line numbers for all violations. Use \\n for line breaks within the string value' : ''}
 - Return ONLY valid JSON - use escaped newlines (\\n) not literal newlines in string values
@@ -105,7 +127,7 @@ interface ErrorResult {
 }
 
 // This function now ONLY handles fetching and parsing from the API
-async function callClaudeAPI(diff: string, playbooks: Playbook[]): Promise<ReviewResult | ErrorResult> {
+async function callClaudeAPI(diff: string, playbooks: Playbook[], langConfig: LanguageConfig): Promise<ReviewResult | ErrorResult> {
   try {
     if (!process.env.ANTHROPIC_API_KEY) {
       return {
@@ -114,7 +136,7 @@ async function callClaudeAPI(diff: string, playbooks: Playbook[]): Promise<Revie
       };
     }
 
-    const masterPrompt = buildMasterPrompt(playbooks);
+    const masterPrompt = buildMasterPrompt(playbooks, langConfig);
     const finalPrompt = masterPrompt.replace('{raw_git_diff_string}', diff);
     
     // Use fetch instead of SDK to avoid Vercel compatibility issues
@@ -254,12 +276,17 @@ export async function POST(request: Request): Promise<Response> {
       );
     }
 
+    // Detect the programming language from the diff
+    const detectedLanguage = detectLanguageFromDiff(diff);
+    const langConfig = getLanguageConfig(detectedLanguage);
+    console.log(`Detected language: ${detectedLanguage}`);
+
     // Load enabled playbooks from configuration
     const playbooks = await loadEnabledPlaybooks();
     console.log(`Loaded ${playbooks.length} playbooks:`, playbooks.map(p => p.name).join(', '));
 
     // Get the result from the API utility function
-    const analysis = await callClaudeAPI(diff, playbooks);
+    const analysis = await callClaudeAPI(diff, playbooks, langConfig);
     
     // Check if the utility function returned an error object
     if ('error' in analysis) {
@@ -289,10 +316,13 @@ ${analysis.playbookResults}
 ${analysis.edgeCases.map(ec => `- ${ec}`).join('\n')}
 
 **Suggested Unit Tests:**
-\`\`\`typescript
+\`\`\`${langConfig.syntaxHighlight}
 // ${analysis.unitTests.filePath}
 ${analysis.unitTests.code}
 \`\`\`
+
+---
+*Detected Language: ${langConfig.expertise} | Test Framework: ${langConfig.testFramework}*
 `;
 
     // Return a successful response with the original and formatted data
