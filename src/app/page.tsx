@@ -62,7 +62,7 @@ export default function Home() {
         <div className={styles.container}>
           <div className={styles.sectionHeader}>
             <h2>Ship Better Code, Faster</h2>
-            <p>Intelligent analysis powered by Claude AI, designed for JavaScript & TypeScript teams</p>
+            <p>Intelligent analysis powered by Claude AI, designed for JavaScript, TypeScript, Python & Rust teams</p>
           </div>
           <div className={styles.featuresGrid}>
             <div className={styles.featureCard}>
@@ -120,7 +120,7 @@ export default function Home() {
               </p>
               <ul>
                 <li><strong>Unlimited</strong> PR reviews</li>
-                <li>JavaScript & TypeScript support</li>
+                <li>JavaScript, TypeScript, Python & Rust support</li>
                 <li>Automated bug detection</li>
                 <li>Edge case identification</li>
                 <li>Unit test generation</li>
