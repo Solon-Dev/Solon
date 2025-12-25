@@ -18,7 +18,9 @@ export interface LanguageConfig {
  */
 export function detectLanguageFromDiff(diff: string): SupportedLanguage {
   // Extract file paths from diff headers (e.g., "diff --git a/path/to/file.ext b/path/to/file.ext")
-  const filePathRegex = /^(?:diff --git|---|\+\+\+) [ab]\/(.+)$/gm;
+  // Optimization: Only look for the new file path in the diff header (+++ b/path)
+  // This avoids counting the same file multiple times and ignores deleted files (+++ /dev/null)
+  const filePathRegex = /^\+\+\+ b\/(.+)$/gm;
   const filePaths: string[] = [];
   let match;
 
