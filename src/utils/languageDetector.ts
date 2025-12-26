@@ -13,22 +13,22 @@ export interface LanguageConfig {
   expertise: string;
 }
 
+// Pre-compiled regex for extension checking (case-insensitive)
+const TS_REGEX = /\.tsx?$/i;
+const JS_REGEX = /\.(?:js|jsx|mjs|cjs)$/i;
+const PY_REGEX = /\.pyw?$/i;
+const RS_REGEX = /\.rs$/i;
+const FILE_PATH_REGEX = /^(?:diff --git|---|\+\+\+) [ab]\/(.+)$/gm;
+
 /**
  * Detects the primary programming language from a git diff
  */
 export function detectLanguageFromDiff(diff: string): SupportedLanguage {
-  // Extract file paths from diff headers (e.g., "diff --git a/path/to/file.ext b/path/to/file.ext")
-  const filePathRegex = /^(?:diff --git|---|\+\+\+) [ab]\/(.+)$/gm;
-  const filePaths: string[] = [];
+  // Reset regex state (since we use global flag)
+  FILE_PATH_REGEX.lastIndex = 0;
+
   let match;
 
-  while ((match = filePathRegex.exec(diff)) !== null) {
-    if (match[1]) {
-      filePaths.push(match[1]);
-    }
-  }
-
-  // Count files by extension
   const languageCounts = {
     typescript: 0,
     javascript: 0,
@@ -36,15 +36,17 @@ export function detectLanguageFromDiff(diff: string): SupportedLanguage {
     rust: 0,
   };
 
-  for (const path of filePaths) {
-    const lowerPath = path.toLowerCase();
-    if (lowerPath.endsWith('.ts') || lowerPath.endsWith('.tsx')) {
+  while ((match = FILE_PATH_REGEX.exec(diff)) !== null) {
+    const path = match[1];
+    if (!path) continue;
+
+    if (TS_REGEX.test(path)) {
       languageCounts.typescript++;
-    } else if (lowerPath.endsWith('.js') || lowerPath.endsWith('.jsx') || lowerPath.endsWith('.mjs') || lowerPath.endsWith('.cjs')) {
+    } else if (JS_REGEX.test(path)) {
       languageCounts.javascript++;
-    } else if (lowerPath.endsWith('.py') || lowerPath.endsWith('.pyw')) {
+    } else if (PY_REGEX.test(path)) {
       languageCounts.python++;
-    } else if (lowerPath.endsWith('.rs')) {
+    } else if (RS_REGEX.test(path)) {
       languageCounts.rust++;
     }
   }
