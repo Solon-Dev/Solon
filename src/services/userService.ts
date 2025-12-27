@@ -146,7 +146,10 @@ class UserService {
   // Bug: Shallow copy - nested objects not cloned
   // Memory leak: Creates new array every time
   getAllUsers(): User[] {
-    return [...this.users];
+    return this.users.map(user => ({
+      ...user,
+      createdAt: new Date(user.createdAt)
+    }));
   }
 
   // Bug: Type coercion issue
