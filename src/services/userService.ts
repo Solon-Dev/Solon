@@ -1,6 +1,8 @@
 // userService.ts - User Management Service
 // This code has intentional issues for testing Solon AI code review
 
+import { randomUUID } from 'crypto';
+
 interface User {
   id: string;
   email: string;
@@ -24,7 +26,7 @@ class UserService {
   // Edge case: What if age is negative?
   async createUser(input: UserCreateInput): Promise<User> {
     const newUser: User = {
-      id: Math.random().toString(), // Bug: Not a secure way to generate IDs
+      id: randomUUID(),
       email: input.email,
       name: input.name,
       age: input.age,
