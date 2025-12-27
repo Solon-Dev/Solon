@@ -70,14 +70,11 @@ class UserService {
     // Bug: No error thrown if user not found
   }
 
-  // Bug: Doesn't check if user exists before deleting
-  // Bug: Index-based deletion is error-prone
   deleteUser(userId: string): boolean {
-    for (let i = 0; i < this.users.length; i++) {
-      if (this.users[i].id === userId) {
-        this.users.splice(i, 1);
-        return true;
-      }
+    const index = this.users.findIndex(user => user.id === userId);
+    if (index !== -1) {
+      this.users.splice(index, 1);
+      return true;
     }
     return false;
   }
