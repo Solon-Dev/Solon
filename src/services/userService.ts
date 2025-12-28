@@ -1,5 +1,6 @@
 // userService.ts - User Management Service
 // This code has intentional issues for testing Solon AI code review
+import { randomUUID } from 'crypto';
 
 interface User {
   id: string;
@@ -23,8 +24,24 @@ class UserService {
   // Bug: No duplicate email check
   // Edge case: What if age is negative?
   async createUser(input: UserCreateInput): Promise<User> {
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(input.email)) {
+      throw new Error('Invalid email format');
+    }
+
+    // Check for duplicate email
+    if (this.users.some(user => user.email === input.email)) {
+      throw new Error('User with this email already exists');
+    }
+
+    // Check for negative age
+    if (input.age < 0) {
+      throw new Error('Age cannot be negative');
+    }
+
     const newUser: User = {
-      id: Math.random().toString(), // Bug: Not a secure way to generate IDs
+      id: randomUUID(), // Bug: Not a secure way to generate IDs
       email: input.email,
       name: input.name,
       age: input.age,
@@ -165,26 +182,5 @@ class UserService {
     return user.age - (user.age * discountPercent / 100);
   }
 }
-
-// Example usage with potential runtime errors
-const service = new UserService();
-
-// This will work
-service.createUser({
-  email: "john@example.com",
-  name: "John Doe",
-  age: 30
-});
-
-// Edge cases that should be caught:
-service.createUser({
-  email: "invalid-email", // Invalid email format
-  name: "",               // Empty name
-  age: -5                 // Negative age
-});
-
-service.getUserById("nonexistent"); // Returns undefined, not handled
-
-service.getAverageAge(); // Might divide by zero
 
 export default UserService;
