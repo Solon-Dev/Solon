@@ -20,9 +20,12 @@ class UserService {
   private users: User[] = [];
 
   // Bug: No email validation
-  // Bug: No duplicate email check
   // Edge case: What if age is negative?
   async createUser(input: UserCreateInput): Promise<User> {
+    if (this.users.some(user => user.email === input.email)) {
+      throw new Error('User with this email already exists');
+    }
+
     const newUser: User = {
       id: Math.random().toString(), // Bug: Not a secure way to generate IDs
       email: input.email,
