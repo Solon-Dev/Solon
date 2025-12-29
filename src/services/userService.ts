@@ -45,6 +45,9 @@ class UserService {
   // Bug: Division by zero not handled
   // Bug: What if users array is empty?
   getAverageAge(): number {
+    if (this.users.length === 0) {
+      return 0;
+    }
     let total = 0;
     for (let i = 0; i < this.users.length; i++) {
       total += this.users[i].age;
