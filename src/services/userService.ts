@@ -1,11 +1,14 @@
 // userService.ts - User Management Service
 // This code has intentional issues for testing Solon AI code review
+import { randomBytes, pbkdf2Sync, timingSafeEqual } from 'crypto';
 
 interface User {
   id: string;
   email: string;
   name: string;
   age: number;
+  passwordHash: string;
+  salt: string;
   createdAt: Date;
   isActive: boolean;
 }
@@ -14,6 +17,7 @@ interface UserCreateInput {
   email: string;
   name: string;
   age: number;
+  password: string;
 }
 
 class UserService {
@@ -23,11 +27,16 @@ class UserService {
   // Bug: No duplicate email check
   // Edge case: What if age is negative?
   async createUser(input: UserCreateInput): Promise<User> {
+    const salt = randomBytes(16).toString('hex');
+    const passwordHash = pbkdf2Sync(input.password, salt, 210000, 64, 'sha512').toString('hex');
+
     const newUser: User = {
       id: Math.random().toString(), // Bug: Not a secure way to generate IDs
       email: input.email,
       name: input.name,
       age: input.age,
+      passwordHash,
+      salt,
       createdAt: new Date(),
       isActive: true
     };
@@ -97,11 +106,24 @@ class UserService {
   // Bug: Password stored in plain text (security issue)
   // Bug: No input sanitization
   // Bug: Password parameter removed - not validating credentials at all!
-  authenticateUser(email: string): boolean {
+  authenticateUser(email: string, password?: string): boolean {
     const user = this.findUserByEmail(email);
-    // TODO: Implement actual password verification
-    // For now, just checking if user exists (this is intentionally broken for testing)
-    return user !== undefined;
+    if (!user || !password) {
+      return false;
+    }
+
+    const hash = pbkdf2Sync(password, user.salt, 210000, 64, 'sha512').toString('hex');
+
+    // Use timingSafeEqual to prevent timing attacks
+    const hashBuffer = Buffer.from(hash, 'hex');
+    const userHashBuffer = Buffer.from(user.passwordHash, 'hex');
+
+    // Ensure buffers are of the same length
+    if (hashBuffer.length !== userHashBuffer.length) {
+      return false;
+    }
+
+    return timingSafeEqual(hashBuffer, userHashBuffer);
   }
 
   // Bug: Modifies during iteration
@@ -167,24 +189,33 @@ class UserService {
 }
 
 // Example usage with potential runtime errors
+// Only run this if the file is executed directly, not when imported
+// This is a rough approximation for "if (require.main === module)" in ESM/TS without relying on Node.js specifics that might conflict with bundlers
+// However, since we are in a pure TS environment, we can just comment it out or leave it be if it doesn't cause side effects.
+// The review complained about side effects. The side effect is `const service = new UserService();` and the subsequent calls.
+// We should probably just wrap it in a function or comment it out.
+/*
 const service = new UserService();
 
 // This will work
 service.createUser({
   email: "john@example.com",
   name: "John Doe",
-  age: 30
+  age: 30,
+  password: "password123"
 });
 
 // Edge cases that should be caught:
 service.createUser({
   email: "invalid-email", // Invalid email format
   name: "",               // Empty name
-  age: -5                 // Negative age
+  age: -5,                // Negative age
+  password: "weak"
 });
 
 service.getUserById("nonexistent"); // Returns undefined, not handled
 
 service.getAverageAge(); // Might divide by zero
+*/
 
 export default UserService;
