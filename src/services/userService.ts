@@ -104,14 +104,10 @@ class UserService {
     return user !== undefined;
   }
 
-  // Bug: Modifies during iteration
-  // Bug: Logic error - should keep active users, not delete them
+  // Optimization: Use filter for O(n) performance instead of O(n^2) splice-in-loop
+  // Fixes bug where elements were skipped due to index shifting
   deactivateInactiveUsers(): void {
-    this.users.forEach((user, index) => {
-      if (!user.isActive) {
-        this.users.splice(index, 1);
-      }
-    });
+    this.users = this.users.filter(user => user.isActive);
   }
 
   // Edge case: What if count is 0 or negative?
