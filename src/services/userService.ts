@@ -1,5 +1,9 @@
 // userService.ts - User Management Service
 // This code has intentional issues for testing Solon AI code review
+import { randomBytes, pbkdf2, timingSafeEqual } from 'node:crypto';
+import { promisify } from 'node:util';
+
+const pbkdf2Async = promisify(pbkdf2);
 
 interface User {
   id: string;
@@ -8,12 +12,15 @@ interface User {
   age: number;
   createdAt: Date;
   isActive: boolean;
+  passwordHash: string;
+  salt: string;
 }
 
 interface UserCreateInput {
   email: string;
   name: string;
   age: number;
+  password?: string;
 }
 
 class UserService {
@@ -23,13 +30,23 @@ class UserService {
   // Bug: No duplicate email check
   // Edge case: What if age is negative?
   async createUser(input: UserCreateInput): Promise<User> {
+    if (!input.password) {
+      throw new Error('Password is required');
+    }
+
+    const salt = randomBytes(16).toString('hex');
+    const hashBuffer = await pbkdf2Async(input.password, salt, 210000, 64, 'sha512');
+    const hash = hashBuffer.toString('hex');
+
     const newUser: User = {
       id: Math.random().toString(), // Bug: Not a secure way to generate IDs
       email: input.email,
       name: input.name,
       age: input.age,
       createdAt: new Date(),
-      isActive: true
+      isActive: true,
+      passwordHash: hash,
+      salt: salt
     };
 
     this.users.push(newUser);
@@ -94,14 +111,21 @@ class UserService {
     return result;
   }
 
-  // Bug: Password stored in plain text (security issue)
-  // Bug: No input sanitization
-  // Bug: Password parameter removed - not validating credentials at all!
-  authenticateUser(email: string): boolean {
+  async authenticateUser(email: string, password?: string): Promise<boolean> {
     const user = this.findUserByEmail(email);
-    // TODO: Implement actual password verification
-    // For now, just checking if user exists (this is intentionally broken for testing)
-    return user !== undefined;
+    if (!user || !password) {
+      return false;
+    }
+
+    const hashBuffer = await pbkdf2Async(password, user.salt, 210000, 64, 'sha512');
+    const userHashBuffer = Buffer.from(user.passwordHash, 'hex');
+
+    // Ensure buffers are same length before comparing
+    if (hashBuffer.length !== userHashBuffer.length) {
+        return false;
+    }
+
+    return timingSafeEqual(hashBuffer, userHashBuffer);
   }
 
   // Bug: Modifies during iteration
@@ -167,20 +191,23 @@ class UserService {
 }
 
 // Example usage with potential runtime errors
+// Note: This example code is not executed in module context usually unless imported for side effects.
 const service = new UserService();
 
 // This will work
 service.createUser({
   email: "john@example.com",
   name: "John Doe",
-  age: 30
+  age: 30,
+  password: "securePassword123"
 });
 
 // Edge cases that should be caught:
 service.createUser({
   email: "invalid-email", // Invalid email format
   name: "",               // Empty name
-  age: -5                 // Negative age
+  age: -5,                 // Negative age
+  password: "weak"
 });
 
 service.getUserById("nonexistent"); // Returns undefined, not handled
