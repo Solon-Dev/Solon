@@ -123,7 +123,6 @@ interface ReviewResult {
 interface ErrorResult {
   error: string;
   details?: string;
-  stack?: string;
 }
 
 // This function now ONLY handles fetching and parsing from the API
@@ -243,10 +242,9 @@ async function callClaudeAPI(diff: string, playbooks: Playbook[], langConfig: La
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    const errorStack = error instanceof Error ? error.stack : undefined;
+    // Security: Do not expose stack traces
     return { 
-      error: `Claude API analysis failed: ${errorMessage}`,
-      stack: errorStack
+      error: `Claude API analysis failed: ${errorMessage}`
     };
   }
 }
@@ -337,13 +335,12 @@ ${analysis.unitTests.code}
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const errorStack = error instanceof Error ? error.stack : undefined;
+    // Security: Do not expose stack traces to client
     
     return NextResponse.json(
       { 
         error: "Internal server error",
         details: errorMessage,
-        stack: errorStack,
         diagnostics: {
           timestamp: new Date().toISOString(),
           hasApiKey: !!process.env.ANTHROPIC_API_KEY
