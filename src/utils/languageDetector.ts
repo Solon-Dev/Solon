@@ -13,22 +13,16 @@ export interface LanguageConfig {
   expertise: string;
 }
 
+// Pre-compile regex to avoid recompilation on every call
+const filePathRegex = /^(?:diff --git|---|\+\+\+) [ab]\/(.+)$/gm;
+
 /**
  * Detects the primary programming language from a git diff
  */
 export function detectLanguageFromDiff(diff: string): SupportedLanguage {
-  // Extract file paths from diff headers (e.g., "diff --git a/path/to/file.ext b/path/to/file.ext")
-  const filePathRegex = /^(?:diff --git|---|\+\+\+) [ab]\/(.+)$/gm;
-  const filePaths: string[] = [];
-  let match;
+  // Reset lastIndex because we're using a global regex in a loop
+  filePathRegex.lastIndex = 0;
 
-  while ((match = filePathRegex.exec(diff)) !== null) {
-    if (match[1]) {
-      filePaths.push(match[1]);
-    }
-  }
-
-  // Count files by extension
   const languageCounts = {
     typescript: 0,
     javascript: 0,
@@ -36,16 +30,21 @@ export function detectLanguageFromDiff(diff: string): SupportedLanguage {
     rust: 0,
   };
 
-  for (const path of filePaths) {
-    const lowerPath = path.toLowerCase();
-    if (lowerPath.endsWith('.ts') || lowerPath.endsWith('.tsx')) {
-      languageCounts.typescript++;
-    } else if (lowerPath.endsWith('.js') || lowerPath.endsWith('.jsx') || lowerPath.endsWith('.mjs') || lowerPath.endsWith('.cjs')) {
-      languageCounts.javascript++;
-    } else if (lowerPath.endsWith('.py') || lowerPath.endsWith('.pyw')) {
-      languageCounts.python++;
-    } else if (lowerPath.endsWith('.rs')) {
-      languageCounts.rust++;
+  let match;
+  while ((match = filePathRegex.exec(diff)) !== null) {
+    if (match[1]) {
+      const path = match[1];
+      const lowerPath = path.toLowerCase();
+
+      if (lowerPath.endsWith('.ts') || lowerPath.endsWith('.tsx')) {
+        languageCounts.typescript++;
+      } else if (lowerPath.endsWith('.js') || lowerPath.endsWith('.jsx') || lowerPath.endsWith('.mjs') || lowerPath.endsWith('.cjs')) {
+        languageCounts.javascript++;
+      } else if (lowerPath.endsWith('.py') || lowerPath.endsWith('.pyw')) {
+        languageCounts.python++;
+      } else if (lowerPath.endsWith('.rs')) {
+        languageCounts.rust++;
+      }
     }
   }
 
@@ -61,9 +60,8 @@ export function detectLanguageFromDiff(diff: string): SupportedLanguage {
     return 'mixed';
   }
 
-  // Return the language with the highest count
-  const sortedLanguages = entries.sort((a, b) => b[1] - a[1]);
-  return sortedLanguages[0][0];
+  // Return the language with the highest count (which is the only one in the list)
+  return nonZeroLanguages[0][0];
 }
 
 /**
