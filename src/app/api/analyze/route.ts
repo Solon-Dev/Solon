@@ -339,11 +339,14 @@ ${analysis.unitTests.code}
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const errorStack = error instanceof Error ? error.stack : undefined;
     
+    // Log full error details securely on the server
+    console.error('API Error in /api/analyze:', { message: errorMessage, stack: errorStack });
+
     return NextResponse.json(
       { 
         error: "Internal server error",
         details: errorMessage,
-        stack: errorStack,
+        // stack: errorStack, // Security fix: Do not leak stack traces to client
         diagnostics: {
           timestamp: new Date().toISOString(),
           hasApiKey: !!process.env.ANTHROPIC_API_KEY
