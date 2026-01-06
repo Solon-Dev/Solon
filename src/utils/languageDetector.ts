@@ -13,22 +13,16 @@ export interface LanguageConfig {
   expertise: string;
 }
 
+// Hoisted regex for performance
+const FILE_PATH_REGEX = /^(?:diff --git|---|\+\+\+) [ab]\/(.+)$/gm;
+
 /**
  * Detects the primary programming language from a git diff
  */
 export function detectLanguageFromDiff(diff: string): SupportedLanguage {
-  // Extract file paths from diff headers (e.g., "diff --git a/path/to/file.ext b/path/to/file.ext")
-  const filePathRegex = /^(?:diff --git|---|\+\+\+) [ab]\/(.+)$/gm;
-  const filePaths: string[] = [];
-  let match;
+  // Reset regex state
+  FILE_PATH_REGEX.lastIndex = 0;
 
-  while ((match = filePathRegex.exec(diff)) !== null) {
-    if (match[1]) {
-      filePaths.push(match[1]);
-    }
-  }
-
-  // Count files by extension
   const languageCounts = {
     typescript: 0,
     javascript: 0,
@@ -36,16 +30,22 @@ export function detectLanguageFromDiff(diff: string): SupportedLanguage {
     rust: 0,
   };
 
-  for (const path of filePaths) {
-    const lowerPath = path.toLowerCase();
-    if (lowerPath.endsWith('.ts') || lowerPath.endsWith('.tsx')) {
-      languageCounts.typescript++;
-    } else if (lowerPath.endsWith('.js') || lowerPath.endsWith('.jsx') || lowerPath.endsWith('.mjs') || lowerPath.endsWith('.cjs')) {
-      languageCounts.javascript++;
-    } else if (lowerPath.endsWith('.py') || lowerPath.endsWith('.pyw')) {
-      languageCounts.python++;
-    } else if (lowerPath.endsWith('.rs')) {
-      languageCounts.rust++;
+  let match;
+  // Iterate matches and count directly
+  while ((match = FILE_PATH_REGEX.exec(diff)) !== null) {
+    if (match[1]) {
+      const path = match[1];
+      const lowerPath = path.toLowerCase();
+
+      if (lowerPath.endsWith('.ts') || lowerPath.endsWith('.tsx')) {
+        languageCounts.typescript++;
+      } else if (lowerPath.endsWith('.js') || lowerPath.endsWith('.jsx') || lowerPath.endsWith('.mjs') || lowerPath.endsWith('.cjs')) {
+        languageCounts.javascript++;
+      } else if (lowerPath.endsWith('.py') || lowerPath.endsWith('.pyw')) {
+        languageCounts.python++;
+      } else if (lowerPath.endsWith('.rs')) {
+        languageCounts.rust++;
+      }
     }
   }
 
