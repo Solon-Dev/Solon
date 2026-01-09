@@ -13,16 +13,21 @@ export interface LanguageConfig {
   expertise: string;
 }
 
+// Extract file paths from diff headers (e.g., "diff --git a/path/to/file.ext b/path/to/file.ext")
+// Hoisted regex for performance optimization
+const FILE_PATH_REGEX = /^(?:diff --git|---|\+\+\+) [ab]\/(.+)$/gm;
+
 /**
  * Detects the primary programming language from a git diff
  */
 export function detectLanguageFromDiff(diff: string): SupportedLanguage {
-  // Extract file paths from diff headers (e.g., "diff --git a/path/to/file.ext b/path/to/file.ext")
-  const filePathRegex = /^(?:diff --git|---|\+\+\+) [ab]\/(.+)$/gm;
+  // Reset regex state for each call
+  FILE_PATH_REGEX.lastIndex = 0;
+
   const filePaths: string[] = [];
   let match;
 
-  while ((match = filePathRegex.exec(diff)) !== null) {
+  while ((match = FILE_PATH_REGEX.exec(diff)) !== null) {
     if (match[1]) {
       filePaths.push(match[1]);
     }
