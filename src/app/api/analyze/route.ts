@@ -123,7 +123,6 @@ interface ReviewResult {
 interface ErrorResult {
   error: string;
   details?: string;
-  stack?: string;
 }
 
 // This function now ONLY handles fetching and parsing from the API
@@ -243,10 +242,9 @@ async function callClaudeAPI(diff: string, playbooks: Playbook[], langConfig: La
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error('Claude API Error:', error); // Log internal details securely
     return { 
-      error: `Claude API analysis failed: ${errorMessage}`,
-      stack: errorStack
+      error: `Claude API analysis failed: ${errorMessage}`
     };
   }
 }
@@ -273,6 +271,18 @@ export async function POST(request: Request): Promise<Response> {
           diagnostics
         },
         { status: 400 }
+      );
+    }
+
+    // Limit diff size to prevent DoS (100KB limit)
+    const MAX_DIFF_LENGTH = 100 * 1024;
+    if (diff.length > MAX_DIFF_LENGTH) {
+      return NextResponse.json(
+        {
+          error: 'Diff is too large. Maximum allowed size is 100KB.',
+          diagnostics
+        },
+        { status: 413 } // Payload Too Large
       );
     }
 
@@ -337,13 +347,13 @@ ${analysis.unitTests.code}
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error('API Route Error:', error); // Log internal details securely
     
     return NextResponse.json(
       { 
         error: "Internal server error",
         details: errorMessage,
-        stack: errorStack,
+        // stack: removed for security (no leakage to client)
         diagnostics: {
           timestamp: new Date().toISOString(),
           hasApiKey: !!process.env.ANTHROPIC_API_KEY
