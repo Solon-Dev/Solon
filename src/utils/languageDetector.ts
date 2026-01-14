@@ -19,14 +19,7 @@ export interface LanguageConfig {
 export function detectLanguageFromDiff(diff: string): SupportedLanguage {
   // Extract file paths from diff headers (e.g., "diff --git a/path/to/file.ext b/path/to/file.ext")
   const filePathRegex = /^(?:diff --git|---|\+\+\+) [ab]\/(.+)$/gm;
-  const filePaths: string[] = [];
   let match;
-
-  while ((match = filePathRegex.exec(diff)) !== null) {
-    if (match[1]) {
-      filePaths.push(match[1]);
-    }
-  }
 
   // Count files by extension
   const languageCounts = {
@@ -36,16 +29,38 @@ export function detectLanguageFromDiff(diff: string): SupportedLanguage {
     rust: 0,
   };
 
-  for (const path of filePaths) {
-    const lowerPath = path.toLowerCase();
-    if (lowerPath.endsWith('.ts') || lowerPath.endsWith('.tsx')) {
-      languageCounts.typescript++;
-    } else if (lowerPath.endsWith('.js') || lowerPath.endsWith('.jsx') || lowerPath.endsWith('.mjs') || lowerPath.endsWith('.cjs')) {
-      languageCounts.javascript++;
-    } else if (lowerPath.endsWith('.py') || lowerPath.endsWith('.pyw')) {
-      languageCounts.python++;
-    } else if (lowerPath.endsWith('.rs')) {
-      languageCounts.rust++;
+  while ((match = filePathRegex.exec(diff)) !== null) {
+    if (match[1]) {
+      const path = match[1];
+      const lowerPath = path.toLowerCase();
+      let found = false;
+
+      if (lowerPath.endsWith('.ts') || lowerPath.endsWith('.tsx')) {
+        languageCounts.typescript++;
+        found = true;
+      } else if (lowerPath.endsWith('.js') || lowerPath.endsWith('.jsx') || lowerPath.endsWith('.mjs') || lowerPath.endsWith('.cjs')) {
+        languageCounts.javascript++;
+        found = true;
+      } else if (lowerPath.endsWith('.py') || lowerPath.endsWith('.pyw')) {
+        languageCounts.python++;
+        found = true;
+      } else if (lowerPath.endsWith('.rs')) {
+        languageCounts.rust++;
+        found = true;
+      }
+
+      // Early exit if we have found more than one language
+      if (found) {
+        let activeLanguages = 0;
+        if (languageCounts.typescript > 0) activeLanguages++;
+        if (languageCounts.javascript > 0) activeLanguages++;
+        if (languageCounts.python > 0) activeLanguages++;
+        if (languageCounts.rust > 0) activeLanguages++;
+
+        if (activeLanguages > 1) {
+          return 'mixed';
+        }
+      }
     }
   }
 
@@ -57,11 +72,9 @@ export function detectLanguageFromDiff(diff: string): SupportedLanguage {
     return 'javascript'; // Default fallback
   }
 
-  if (nonZeroLanguages.length > 1) {
-    return 'mixed';
-  }
-
-  // Return the language with the highest count
+  // At this point, we know we have exactly one language with count > 0
+  // (otherwise we would have returned 'mixed' in the loop)
+  // Return that language
   const sortedLanguages = entries.sort((a, b) => b[1] - a[1]);
   return sortedLanguages[0][0];
 }
