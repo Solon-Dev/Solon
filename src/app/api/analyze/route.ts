@@ -243,10 +243,10 @@ async function callClaudeAPI(diff: string, playbooks: Playbook[], langConfig: La
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    const errorStack = error instanceof Error ? error.stack : undefined;
+    // Log error internally but do not return stack trace
+    console.error('Claude API analysis failed:', error);
     return { 
-      error: `Claude API analysis failed: ${errorMessage}`,
-      stack: errorStack
+      error: `Claude API analysis failed: ${errorMessage}`
     };
   }
 }
@@ -290,8 +290,16 @@ export async function POST(request: Request): Promise<Response> {
     
     // Check if the utility function returned an error object
     if ('error' in analysis) {
+      // Ensure stack is not leaked even if it was present
+      const errorResult = analysis as ErrorResult;
+      // Reconstruct the object without stack to avoid lint errors and leakage
+      const safeAnalysis = {
+        error: errorResult.error,
+        details: errorResult.details
+      };
+
       return NextResponse.json({
-        ...analysis,
+        ...safeAnalysis,
         diagnostics
       }, { status: 500 });
     }
@@ -337,13 +345,14 @@ ${analysis.unitTests.code}
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const errorStack = error instanceof Error ? error.stack : undefined;
+    // Log the full error and stack trace to server console
+    console.error('Internal server error in analyze route:', error);
     
     return NextResponse.json(
       { 
         error: "Internal server error",
         details: errorMessage,
-        stack: errorStack,
+        // stack: removed to prevent information leakage
         diagnostics: {
           timestamp: new Date().toISOString(),
           hasApiKey: !!process.env.ANTHROPIC_API_KEY
