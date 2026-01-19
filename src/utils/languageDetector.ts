@@ -19,16 +19,7 @@ export interface LanguageConfig {
 export function detectLanguageFromDiff(diff: string): SupportedLanguage {
   // Extract file paths from diff headers (e.g., "diff --git a/path/to/file.ext b/path/to/file.ext")
   const filePathRegex = /^(?:diff --git|---|\+\+\+) [ab]\/(.+)$/gm;
-  const filePaths: string[] = [];
-  let match;
 
-  while ((match = filePathRegex.exec(diff)) !== null) {
-    if (match[1]) {
-      filePaths.push(match[1]);
-    }
-  }
-
-  // Count files by extension
   const languageCounts = {
     typescript: 0,
     javascript: 0,
@@ -36,16 +27,35 @@ export function detectLanguageFromDiff(diff: string): SupportedLanguage {
     rust: 0,
   };
 
-  for (const path of filePaths) {
-    const lowerPath = path.toLowerCase();
-    if (lowerPath.endsWith('.ts') || lowerPath.endsWith('.tsx')) {
-      languageCounts.typescript++;
-    } else if (lowerPath.endsWith('.js') || lowerPath.endsWith('.jsx') || lowerPath.endsWith('.mjs') || lowerPath.endsWith('.cjs')) {
-      languageCounts.javascript++;
-    } else if (lowerPath.endsWith('.py') || lowerPath.endsWith('.pyw')) {
-      languageCounts.python++;
-    } else if (lowerPath.endsWith('.rs')) {
-      languageCounts.rust++;
+  let match;
+  let distinctLanguagesFound = 0;
+
+  // Single pass optimization: count extensions while matching to avoid creating array and multiple loops
+  while ((match = filePathRegex.exec(diff)) !== null) {
+    if (match[1]) {
+      const lowerPath = match[1].toLowerCase();
+      let detected: SupportedLanguage | null = null;
+
+      if (lowerPath.endsWith('.ts') || lowerPath.endsWith('.tsx')) {
+        detected = 'typescript';
+      } else if (lowerPath.endsWith('.js') || lowerPath.endsWith('.jsx') || lowerPath.endsWith('.mjs') || lowerPath.endsWith('.cjs')) {
+        detected = 'javascript';
+      } else if (lowerPath.endsWith('.py') || lowerPath.endsWith('.pyw')) {
+        detected = 'python';
+      } else if (lowerPath.endsWith('.rs')) {
+        detected = 'rust';
+      }
+
+      if (detected) {
+        // Optimization: Early exit if we detect mixed languages
+        if (languageCounts[detected] === 0) {
+          distinctLanguagesFound++;
+          if (distinctLanguagesFound > 1) {
+            return 'mixed';
+          }
+        }
+        languageCounts[detected]++;
+      }
     }
   }
 
@@ -55,10 +65,6 @@ export function detectLanguageFromDiff(diff: string): SupportedLanguage {
 
   if (nonZeroLanguages.length === 0) {
     return 'javascript'; // Default fallback
-  }
-
-  if (nonZeroLanguages.length > 1) {
-    return 'mixed';
   }
 
   // Return the language with the highest count
