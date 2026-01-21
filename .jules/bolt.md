@@ -1,0 +1,3 @@
+## 2024-05-22 - [Single-Pass Regex Loop with Early Exit]
+**Learning:** For large string inputs (like git diffs), iterating through matches with a single regex loop and processing immediately is significantly faster and more memory-efficient than first extracting all matches into an array.
+**Action:** When processing large text data where multiple passes or intermediate arrays are used, refactor to a single-pass loop that updates state (e.g., counts) in-place. If the goal allows (e.g., detecting "mixed" content), implement an early exit condition to stop processing as soon as the criteria are met. This avoids O(N) processing for the remainder of the file.
