@@ -19,9 +19,8 @@ export interface LanguageConfig {
 export function detectLanguageFromDiff(diff: string): SupportedLanguage {
   // Extract file paths from diff headers (e.g., "diff --git a/path/to/file.ext b/path/to/file.ext")
   const filePathRegex = /^(?:diff --git|---|\+\+\+) [ab]\/(.+)$/gm;
-  let match;
 
-  // Count files by extension
+  // Count files by extension directly (single pass)
   const languageCounts = {
     typescript: 0,
     javascript: 0,
@@ -29,53 +28,44 @@ export function detectLanguageFromDiff(diff: string): SupportedLanguage {
     rust: 0,
   };
 
+  let match;
   let languagesFound = 0;
 
   while ((match = filePathRegex.exec(diff)) !== null) {
     if (match[1]) {
       const lowerPath = match[1].toLowerCase();
-      let detected: keyof typeof languageCounts | null = null;
 
       if (lowerPath.endsWith('.ts') || lowerPath.endsWith('.tsx')) {
-        detected = 'typescript';
+        if (languageCounts.typescript === 0) languagesFound++;
+        languageCounts.typescript++;
       } else if (lowerPath.endsWith('.js') || lowerPath.endsWith('.jsx') || lowerPath.endsWith('.mjs') || lowerPath.endsWith('.cjs')) {
-        detected = 'javascript';
+        if (languageCounts.javascript === 0) languagesFound++;
+        languageCounts.javascript++;
       } else if (lowerPath.endsWith('.py') || lowerPath.endsWith('.pyw')) {
-        detected = 'python';
+        if (languageCounts.python === 0) languagesFound++;
+        languageCounts.python++;
       } else if (lowerPath.endsWith('.rs')) {
-        detected = 'rust';
+        if (languageCounts.rust === 0) languagesFound++;
+        languageCounts.rust++;
       }
 
-      if (detected) {
-        if (languageCounts[detected] === 0) {
-          languagesFound++;
-          // Optimization: If we have already found more than one language, we can return 'mixed' immediately
-          // without parsing the rest of the diff.
-          if (languagesFound > 1) {
-            return 'mixed';
-          }
-        }
-        languageCounts[detected]++;
+      // Early exit if multiple languages detected
+      if (languagesFound > 1) {
+        return 'mixed';
       }
     }
   }
 
-  // Determine primary language (highest count)
+  // Determine primary language
   const entries = Object.entries(languageCounts) as [SupportedLanguage, number][];
-  const nonZeroLanguages = entries.filter(([, count]) => count > 0);
+  // Since we return 'mixed' early, we only have 0 or 1 language here
+  const primaryLanguage = entries.find(([, count]) => count > 0);
 
-  if (nonZeroLanguages.length === 0) {
+  if (!primaryLanguage) {
     return 'javascript'; // Default fallback
   }
 
-  // Double check, though early exit handles most cases
-  if (nonZeroLanguages.length > 1) {
-    return 'mixed';
-  }
-
-  // Return the language with the highest count
-  // Since we exit early on mixed, if we are here, there is only 1 non-zero language.
-  return nonZeroLanguages[0][0];
+  return primaryLanguage[0];
 }
 
 /**
