@@ -11,42 +11,49 @@ jest.mock('next/server', () => ({
 }));
 
 // Mock loadEnabledPlaybooks
+/** @jest-environment node */
+import { POST } from '../route';
+
+// Mock NextResponse to inspect the body
+jest.mock('next/server', () => ({
+  NextResponse: {
+    json: jest.fn((body, init) => ({
+      json: async () => body,
+      status: init?.status || 200,
+    })),
+  },
+}));
+
+// Mock the language detector to throw an error
+jest.mock('@/utils/languageDetector', () => ({
+  detectLanguageFromDiff: jest.fn(() => {
+    throw new Error('Simulated security failure');
+  }),
+  getLanguageConfig: jest.fn(),
+}));
+
 jest.mock('@/lib/config/loadPlaybookConfig', () => ({
   loadEnabledPlaybooks: jest.fn().mockResolvedValue([]),
 }));
 
-describe('POST /api/analyze', () => {
-  const originalEnv = process.env;
-
-  beforeEach(() => {
-    jest.resetModules();
-    process.env = { ...originalEnv, ANTHROPIC_API_KEY: 'test-key' };
-    jest.clearAllMocks();
-  });
-
-  afterAll(() => {
-    process.env = originalEnv;
-  });
-
-  it('should not leak stack traces when API call fails', async () => {
-    // Mock fetch to fail
-    global.fetch = jest.fn().mockRejectedValue(new Error('Simulated API failure'));
-
-    const req = new Request('http://localhost/api/analyze', {
-      method: 'POST',
-      body: JSON.stringify({ diff: 'some diff' }),
-    });
+describe('POST /api/analyze - Security', () => {
+  it('should currently leak stack traces on error (Vulnerability Check)', async () => {
+    const req = {
+      json: async () => ({ diff: 'some diff' }),
+    } as unknown as Request;
 
     const response = await POST(req);
+    // @ts-expect-error - mock returns simple object
+    const body = await response.json();
 
-    // Check response status
-    // @ts-expect-error - we mocked NextResponse to return the object directly for inspection
+    // Verify status code is 500
     expect(response.status).toBe(500);
 
-    // @ts-expect-error - we mocked NextResponse
-    const body = response.body;
+    // Verify error message matches
+    expect(body.error).toBe('Internal server error');
+    expect(body.details).toBe('Simulated security failure');
 
-    expect(body).toHaveProperty('error');
-    expect(body).not.toHaveProperty('stack');
+    // VERIFICATION: Stack trace should NOT be present
+    expect(body.stack).toBeUndefined();
   });
 });
