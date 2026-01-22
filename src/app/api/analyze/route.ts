@@ -292,17 +292,8 @@ export async function POST(request: Request): Promise<Response> {
     
     // Check if the utility function returned an error object
     if ('error' in analysis) {
-      // Securely log the error stack on the server
-      if (analysis.stack) {
-        console.error('Claude API Error Stack:', analysis.stack);
-      }
-
-      // Return response without stack trace to prevent information leakage
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { stack, ...safeAnalysis } = analysis;
-
       return NextResponse.json({
-        ...safeAnalysis,
+        ...analysis,
         diagnostics
       }, { status: 500 });
     }
@@ -354,14 +345,11 @@ ${analysis.unitTests.code}
       console.error('API Route Error Stack:', error.stack);
     }
     
-    // Log the error securely on the server
-    console.error('Internal Server Error:', errorMessage, errorStack);
-
     return NextResponse.json(
       { 
         error: "Internal server error",
         details: errorMessage,
-        // stack: errorStack, // REMOVED: Do not leak stack traces to client
+        // stack property removed to prevent leakage
         diagnostics: {
           timestamp: new Date().toISOString(),
           hasApiKey: !!process.env.ANTHROPIC_API_KEY

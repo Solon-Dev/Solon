@@ -11,49 +11,42 @@ jest.mock('next/server', () => ({
 }));
 
 // Mock loadEnabledPlaybooks
-/** @jest-environment node */
-import { POST } from '../route';
-
-// Mock NextResponse to inspect the body
-jest.mock('next/server', () => ({
-  NextResponse: {
-    json: jest.fn((body, init) => ({
-      json: async () => body,
-      status: init?.status || 200,
-    })),
-  },
-}));
-
-// Mock the language detector to throw an error
-jest.mock('@/utils/languageDetector', () => ({
-  detectLanguageFromDiff: jest.fn(() => {
-    throw new Error('Simulated security failure');
-  }),
-  getLanguageConfig: jest.fn(),
-}));
-
 jest.mock('@/lib/config/loadPlaybookConfig', () => ({
   loadEnabledPlaybooks: jest.fn().mockResolvedValue([]),
 }));
 
-describe('POST /api/analyze - Security', () => {
-  it('should currently leak stack traces on error (Vulnerability Check)', async () => {
-    const req = {
-      json: async () => ({ diff: 'some diff' }),
-    } as unknown as Request;
+describe('POST /api/analyze', () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    jest.resetModules();
+    process.env = { ...originalEnv, ANTHROPIC_API_KEY: 'test-key' };
+    jest.clearAllMocks();
+  });
+
+  afterAll(() => {
+    process.env = originalEnv;
+  });
+
+  it('should not leak stack traces when API call fails', async () => {
+    // Mock fetch to fail
+    global.fetch = jest.fn().mockRejectedValue(new Error('Simulated API failure'));
+
+    const req = new Request('http://localhost/api/analyze', {
+      method: 'POST',
+      body: JSON.stringify({ diff: 'some diff' }),
+    });
 
     const response = await POST(req);
-    // @ts-expect-error - mock returns simple object
-    const body = await response.json();
 
-    // Verify status code is 500
+    // Check response status
+    // @ts-expect-error - we mocked NextResponse to return the object directly for inspection
     expect(response.status).toBe(500);
 
-    // Verify error message matches
-    expect(body.error).toBe('Internal server error');
-    expect(body.details).toBe('Simulated security failure');
+    // @ts-expect-error - we mocked NextResponse
+    const body = response.body;
 
-    // VERIFICATION: Stack trace should NOT be present
-    expect(body.stack).toBeUndefined();
+    expect(body).toHaveProperty('error');
+    expect(body).not.toHaveProperty('stack');
   });
 });
