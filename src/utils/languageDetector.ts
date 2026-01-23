@@ -18,7 +18,8 @@ export interface LanguageConfig {
  */
 export function detectLanguageFromDiff(diff: string): SupportedLanguage {
   // Extract file paths from diff headers (e.g., "diff --git a/path/to/file.ext b/path/to/file.ext")
-  const filePathRegex = /^(?:diff --git|---|\+\+\+) [ab]\/(.+)$/gm;
+  // Optimization: Regex only matches supported extensions to avoid processing irrelevant files
+  const filePathRegex = /^(?:diff --git|---|\+\+\+) [ab]\/.*\.(ts|tsx|js|jsx|mjs|cjs|py|pyw|rs)$/gmi;
   let match;
 
   // Track found languages. If we find more than one type, we can return 'mixed' immediately.
@@ -26,19 +27,16 @@ export function detectLanguageFromDiff(diff: string): SupportedLanguage {
   const foundLanguages = new Set<SupportedLanguage>();
 
   while ((match = filePathRegex.exec(diff)) !== null) {
-    const path = match[1];
-    if (!path) continue;
-
-    const lowerPath = path.toLowerCase();
+    const ext = match[1].toLowerCase();
     let detected: SupportedLanguage | null = null;
 
-    if (lowerPath.endsWith('.ts') || lowerPath.endsWith('.tsx')) {
+    if (ext === 'ts' || ext === 'tsx') {
       detected = 'typescript';
-    } else if (lowerPath.endsWith('.js') || lowerPath.endsWith('.jsx') || lowerPath.endsWith('.mjs') || lowerPath.endsWith('.cjs')) {
+    } else if (['js', 'jsx', 'mjs', 'cjs'].includes(ext)) {
       detected = 'javascript';
-    } else if (lowerPath.endsWith('.py') || lowerPath.endsWith('.pyw')) {
+    } else if (ext === 'py' || ext === 'pyw') {
       detected = 'python';
-    } else if (lowerPath.endsWith('.rs')) {
+    } else if (ext === 'rs') {
       detected = 'rust';
     }
 
