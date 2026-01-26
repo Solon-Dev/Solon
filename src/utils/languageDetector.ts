@@ -13,12 +13,32 @@ export interface LanguageConfig {
   expertise: string;
 }
 
+// Map extensions to languages for O(1) lookup
+const EXTENSION_MAP: Record<string, SupportedLanguage> = {
+  '.ts': 'typescript',
+  '.tsx': 'typescript',
+  '.js': 'javascript',
+  '.jsx': 'javascript',
+  '.mjs': 'javascript',
+  '.cjs': 'javascript',
+  '.py': 'python',
+  '.pyw': 'python',
+  '.rs': 'rust',
+};
+
 /**
  * Detects the primary programming language from a git diff
  */
 export function detectLanguageFromDiff(diff: string): SupportedLanguage {
-  // Extract file paths from diff headers (e.g., "diff --git a/path/to/file.ext b/path/to/file.ext")
-  const filePathRegex = /^(?:diff --git|---|\+\+\+) [ab]\/(.+)$/gm;
+  // Extract file extension directly from diff headers
+  // Optimization: Capture ONLY the extension at the end of the line.
+  // This avoids capturing and allocating the full path string (which can be very long).
+  // Regex explanation:
+  // ^(?:diff --git|---|\+\+\+) : Start of line, match diff header prefixes
+  // [ab]\/                     : Match a/ or b/ (source/destination)
+  // .*?                        : Non-greedy match of the path
+  // (\.[a-zA-Z0-9]+)$          : Capture the extension (dot + alphanumeric) at the end of line
+  const filePathRegex = /^(?:diff --git|---|\+\+\+) [ab]\/.*?(\.[a-zA-Z0-9]+)$/gm;
   let match;
 
   // Track found languages. If we find more than one type, we can return 'mixed' immediately.
@@ -26,21 +46,10 @@ export function detectLanguageFromDiff(diff: string): SupportedLanguage {
   const foundLanguages = new Set<SupportedLanguage>();
 
   while ((match = filePathRegex.exec(diff)) !== null) {
-    const path = match[1];
-    if (!path) continue;
-
-    const lowerPath = path.toLowerCase();
-    let detected: SupportedLanguage | null = null;
-
-    if (lowerPath.endsWith('.ts') || lowerPath.endsWith('.tsx')) {
-      detected = 'typescript';
-    } else if (lowerPath.endsWith('.js') || lowerPath.endsWith('.jsx') || lowerPath.endsWith('.mjs') || lowerPath.endsWith('.cjs')) {
-      detected = 'javascript';
-    } else if (lowerPath.endsWith('.py') || lowerPath.endsWith('.pyw')) {
-      detected = 'python';
-    } else if (lowerPath.endsWith('.rs')) {
-      detected = 'rust';
-    }
+    // match[1] is now just the extension (e.g. ".ts")
+    // We still lower case it to be safe, though most are lowercase.
+    const ext = match[1].toLowerCase();
+    const detected = EXTENSION_MAP[ext];
 
     if (detected) {
       foundLanguages.add(detected);
