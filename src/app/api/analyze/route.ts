@@ -278,6 +278,16 @@ export async function POST(request: Request): Promise<Response> {
       );
     }
 
+    if (diff.length > 500000) {
+      return NextResponse.json(
+        {
+          error: 'Diff too large. Maximum allowed size is 500,000 characters.',
+          diagnostics
+        },
+        { status: 413 }
+      );
+    }
+
     // Detect the programming language from the diff
     const detectedLanguage = detectLanguageFromDiff(diff);
     const langConfig = getLanguageConfig(detectedLanguage);
