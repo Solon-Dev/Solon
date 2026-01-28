@@ -13,6 +13,9 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+// Limit payload size to preventing DoS (500KB)
+const MAX_DIFF_LENGTH = 500000;
+
 /**
  * Generate the master prompt with optional playbook integration and language awareness
  */
@@ -275,6 +278,16 @@ export async function POST(request: Request): Promise<Response> {
           diagnostics
         },
         { status: 400 }
+      );
+    }
+
+    if (diff.length > MAX_DIFF_LENGTH) {
+      return NextResponse.json(
+        {
+          error: 'Diff is too large. Max allowed is 500,000 characters.',
+          diagnostics
+        },
+        { status: 413 }
       );
     }
 
