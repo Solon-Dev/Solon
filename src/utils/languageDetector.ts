@@ -13,6 +13,19 @@ export interface LanguageConfig {
   expertise: string;
 }
 
+// Optimization: O(1) extension lookup to avoid multiple string comparisons
+const EXTENSION_MAP: Record<string, SupportedLanguage> = {
+  '.ts': 'typescript',
+  '.tsx': 'typescript',
+  '.js': 'javascript',
+  '.jsx': 'javascript',
+  '.mjs': 'javascript',
+  '.cjs': 'javascript',
+  '.py': 'python',
+  '.pyw': 'python',
+  '.rs': 'rust',
+};
+
 /**
  * Detects the primary programming language from a git diff
  */
@@ -29,23 +42,18 @@ export function detectLanguageFromDiff(diff: string): SupportedLanguage {
     const path = match[1];
     if (!path) continue;
 
-    const lowerPath = path.toLowerCase();
-    let detected: SupportedLanguage | null = null;
+    // Optimization: Avoid allocating lowercased string of full path.
+    // Instead, extract extension and lookup.
+    const lastDotIndex = path.lastIndexOf('.');
+    if (lastDotIndex !== -1) {
+      const ext = path.slice(lastDotIndex).toLowerCase();
+      const detected = EXTENSION_MAP[ext];
 
-    if (lowerPath.endsWith('.ts') || lowerPath.endsWith('.tsx')) {
-      detected = 'typescript';
-    } else if (lowerPath.endsWith('.js') || lowerPath.endsWith('.jsx') || lowerPath.endsWith('.mjs') || lowerPath.endsWith('.cjs')) {
-      detected = 'javascript';
-    } else if (lowerPath.endsWith('.py') || lowerPath.endsWith('.pyw')) {
-      detected = 'python';
-    } else if (lowerPath.endsWith('.rs')) {
-      detected = 'rust';
-    }
-
-    if (detected) {
-      foundLanguages.add(detected);
-      if (foundLanguages.size > 1) {
-        return 'mixed';
+      if (detected) {
+        foundLanguages.add(detected);
+        if (foundLanguages.size > 1) {
+          return 'mixed';
+        }
       }
     }
   }
