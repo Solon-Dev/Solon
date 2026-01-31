@@ -13,6 +13,8 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+const MAX_DIFF_LENGTH = 500000;
+
 /**
  * Generate the master prompt with optional playbook integration and language awareness
  */
@@ -275,6 +277,16 @@ export async function POST(request: Request): Promise<Response> {
           diagnostics
         },
         { status: 400 }
+      );
+    }
+
+    if (diff.length > MAX_DIFF_LENGTH) {
+      return NextResponse.json(
+        {
+          error: `Payload too large. Diff exceeds ${MAX_DIFF_LENGTH} characters.`,
+          diagnostics
+        },
+        { status: 413 }
       );
     }
 
