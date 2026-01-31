@@ -49,4 +49,21 @@ describe('POST /api/analyze', () => {
     expect(body).toHaveProperty('error');
     expect(body).not.toHaveProperty('stack');
   });
+
+  it('should reject diffs larger than 500k characters', async () => {
+    const largeDiff = 'a'.repeat(500001);
+    const req = new Request('http://localhost/api/analyze', {
+      method: 'POST',
+      body: JSON.stringify({ diff: largeDiff }),
+    });
+
+    const response = await POST(req);
+
+    // @ts-expect-error - we mocked NextResponse
+    expect(response.status).toBe(413);
+
+    // @ts-expect-error - we mocked NextResponse
+    const body = response.body;
+    expect(body.error).toContain('Payload too large');
+  });
 });
