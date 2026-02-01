@@ -29,17 +29,23 @@ export function detectLanguageFromDiff(diff: string): SupportedLanguage {
     const path = match[1];
     if (!path) continue;
 
-    const lowerPath = path.toLowerCase();
+    // Optimization: Avoid allocating lowercased version of full path.
+    // Instead, extract extension and check that.
+    const lastDotIndex = path.lastIndexOf('.');
     let detected: SupportedLanguage | null = null;
 
-    if (lowerPath.endsWith('.ts') || lowerPath.endsWith('.tsx')) {
-      detected = 'typescript';
-    } else if (lowerPath.endsWith('.js') || lowerPath.endsWith('.jsx') || lowerPath.endsWith('.mjs') || lowerPath.endsWith('.cjs')) {
-      detected = 'javascript';
-    } else if (lowerPath.endsWith('.py') || lowerPath.endsWith('.pyw')) {
-      detected = 'python';
-    } else if (lowerPath.endsWith('.rs')) {
-      detected = 'rust';
+    if (lastDotIndex !== -1) {
+      const ext = path.slice(lastDotIndex).toLowerCase();
+
+      if (ext === '.ts' || ext === '.tsx') {
+        detected = 'typescript';
+      } else if (ext === '.js' || ext === '.jsx' || ext === '.mjs' || ext === '.cjs') {
+        detected = 'javascript';
+      } else if (ext === '.py' || ext === '.pyw') {
+        detected = 'python';
+      } else if (ext === '.rs') {
+        detected = 'rust';
+      }
     }
 
     if (detected) {
