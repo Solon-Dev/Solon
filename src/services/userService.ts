@@ -82,16 +82,8 @@ class UserService {
     return false;
   }
 
-  // Bug: Incorrect logic - always returns first user or undefined
-  // Bug: Case sensitivity not considered
   findUserByEmail(email: string): User | undefined {
-    let result;
-    this.users.forEach(user => {
-      if (user.email === email) {
-        result = user;
-      }
-    });
-    return result;
+    return this.users.find(user => user.email.toLowerCase() === email.toLowerCase());
   }
 
   // Bug: Password stored in plain text (security issue)
