@@ -160,7 +160,7 @@ class UserService {
   calculateDiscountedAge(userId: string, discountPercent: number): number {
     const user = this.getUserById(userId);
     if (!user) {
-      return 0; // Bug: Should throw error instead
+      throw new Error(`User not found with ID: ${userId}`);
     }
     return user.age - (user.age * discountPercent / 100);
   }
