@@ -138,6 +138,10 @@ class UserService {
     for (const user of this.users) {
       if (user.age > oldest.age) {
         oldest = user;
+      } else if (user.age === oldest.age) {
+        if (user.createdAt < oldest.createdAt) {
+          oldest = user;
+        }
       }
     }
     return oldest;
