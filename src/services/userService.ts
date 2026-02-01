@@ -38,8 +38,12 @@ class UserService {
 
   // Bug: No error handling if user not found
   // Bug: Returns undefined but return type says User
-  getUserById(id: string): User | undefined {
-    return this.users.find(user => user.id === id);
+  getUserById(id: string): User {
+    const user = this.users.find(user => user.id === id);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    return user;
   }
 
   // Bug: Division by zero not handled
@@ -64,10 +68,7 @@ class UserService {
   // Bug: No validation that age is positive
   async updateUserAge(userId: string, newAge: number): Promise<void> {
     const user = this.getUserById(userId);
-    if (user) {
-      user.age = newAge;
-    }
-    // Bug: No error thrown if user not found
+    user.age = newAge;
   }
 
   // Bug: Doesn't check if user exists before deleting
@@ -159,32 +160,9 @@ class UserService {
   // Bug: No validation of discount range (0-100)
   calculateDiscountedAge(userId: string, discountPercent: number): number {
     const user = this.getUserById(userId);
-    if (!user) {
-      return 0; // Bug: Should throw error instead
-    }
     return user.age - (user.age * discountPercent / 100);
   }
 }
 
-// Example usage with potential runtime errors
-const service = new UserService();
-
-// This will work
-service.createUser({
-  email: "john@example.com",
-  name: "John Doe",
-  age: 30
-});
-
-// Edge cases that should be caught:
-service.createUser({
-  email: "invalid-email", // Invalid email format
-  name: "",               // Empty name
-  age: -5                 // Negative age
-});
-
-service.getUserById("nonexistent"); // Returns undefined, not handled
-
-service.getAverageAge(); // Might divide by zero
 
 export default UserService;
