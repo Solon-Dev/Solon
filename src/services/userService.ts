@@ -63,6 +63,9 @@ class UserService {
   // Bug: Race condition - not atomic
   // Bug: No validation that age is positive
   async updateUserAge(userId: string, newAge: number): Promise<void> {
+    if (newAge <= 0) {
+      throw new Error('Age must be a positive number');
+    }
     const user = this.getUserById(userId);
     if (user) {
       user.age = newAge;
