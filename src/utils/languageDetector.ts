@@ -21,56 +21,41 @@ export function detectLanguageFromDiff(diff: string): SupportedLanguage {
   const filePathRegex = /^(?:diff --git|---|\+\+\+) [ab]\/(.+)$/gm;
   let match;
 
-  // Count files by extension
-  const languageCounts = {
-    typescript: 0,
-    javascript: 0,
-    python: 0,
-    rust: 0,
-  };
-
-  let distinctLanguages = 0;
+  // Track found languages. If we find more than one type, we can return 'mixed' immediately.
+  // Optimization: Single pass regex + early exit avoids processing large diffs fully when result is 'mixed'.
+  const foundLanguages = new Set<SupportedLanguage>();
 
   while ((match = filePathRegex.exec(diff)) !== null) {
-    if (match[1]) {
-      const lowerPath = match[1].toLowerCase();
-      let detected: keyof typeof languageCounts | null = null;
+    const path = match[1];
+    if (!path) continue;
 
-      if (lowerPath.endsWith('.ts') || lowerPath.endsWith('.tsx')) {
-        detected = 'typescript';
-      } else if (lowerPath.endsWith('.js') || lowerPath.endsWith('.jsx') || lowerPath.endsWith('.mjs') || lowerPath.endsWith('.cjs')) {
-        detected = 'javascript';
-      } else if (lowerPath.endsWith('.py') || lowerPath.endsWith('.pyw')) {
-        detected = 'python';
-      } else if (lowerPath.endsWith('.rs')) {
-        detected = 'rust';
-      }
+    const lowerPath = path.toLowerCase();
+    let detected: SupportedLanguage | null = null;
 
-      if (detected) {
-        if (languageCounts[detected] === 0) {
-          distinctLanguages++;
-        }
-        languageCounts[detected]++;
+    if (lowerPath.endsWith('.ts') || lowerPath.endsWith('.tsx')) {
+      detected = 'typescript';
+    } else if (lowerPath.endsWith('.js') || lowerPath.endsWith('.jsx') || lowerPath.endsWith('.mjs') || lowerPath.endsWith('.cjs')) {
+      detected = 'javascript';
+    } else if (lowerPath.endsWith('.py') || lowerPath.endsWith('.pyw')) {
+      detected = 'python';
+    } else if (lowerPath.endsWith('.rs')) {
+      detected = 'rust';
+    }
 
-        // Early exit optimization: if we have found more than one language type, it's mixed.
-        if (distinctLanguages > 1) {
-          return 'mixed';
-        }
+    if (detected) {
+      foundLanguages.add(detected);
+      if (foundLanguages.size > 1) {
+        return 'mixed';
       }
     }
   }
 
-  // If we reach here, we have 0 or 1 language type found (or just unrecognized files)
-
-  const entries = Object.entries(languageCounts) as [SupportedLanguage, number][];
-  const nonZeroLanguages = entries.filter(([, count]) => count > 0);
-
-  if (nonZeroLanguages.length === 0) {
+  if (foundLanguages.size === 0) {
     return 'javascript'; // Default fallback
   }
 
-  // Since we exit early if > 1, if we are here and have nonZeroLanguages, it must be exactly 1 type.
-  return nonZeroLanguages[0][0];
+  // If size is 1, return that language
+  return foundLanguages.values().next().value;
 }
 
 /**

@@ -1,3 +1,5 @@
-## 2024-05-23 - [Regex Loop Optimization]
-**Learning:** Avoid intermediate arrays when processing large strings. Using a regex execution loop with immediate processing allowed for an "early exit" strategy in language detection, significantly reducing processing time for mixed-language diffs.
-**Action:** When parsing large inputs, prefer single-pass processing loops over `matchAll` or extracting all matches into an array first.
+# Bolt's Journal
+
+## 2025-05-18 - Efficient Regex Looping
+**Learning:** For large string inputs, using a `while(regex.exec(str))` loop with a single pass is significantly faster and more memory efficient than `str.match(globalRegex)` or accumulating all matches into an array before processing.
+**Action:** Always prefer single-pass regex loops with early exit strategies for parsing large text blocks, especially when the goal is detection rather than full extraction.
