@@ -49,4 +49,21 @@ describe('POST /api/analyze', () => {
     expect(body).toHaveProperty('error');
     expect(body).not.toHaveProperty('stack');
   });
+
+  it('should return 413 if diff is too large', async () => {
+    const largeDiff = 'a'.repeat(500001);
+    const req = new Request('http://localhost/api/analyze', {
+      method: 'POST',
+      body: JSON.stringify({ diff: largeDiff }),
+    });
+
+    const response = await POST(req);
+
+    // @ts-expect-error - mocked
+    expect(response.status).toBe(413);
+    // @ts-expect-error - mocked
+    expect(response.body).toEqual(expect.objectContaining({
+      error: 'Diff is too large. Max size is 500,000 characters.'
+    }));
+  });
 });
