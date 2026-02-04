@@ -111,7 +111,7 @@ export default function PrivacyPolicy() {
             </p>
             <ul style={{listStyle: 'none', padding: 0, color: '#475569', lineHeight: 1.8}}>
               <li><strong>Email:</strong> <a href="mailto:donta.ruffin@gmail.com" style={{color: '#2563eb', textDecoration: 'none'}}>donta.ruffin@gmail.com</a></li>
-              <li><strong>GitHub Issues:</strong> <a href="https://github.com/DontaRuffin/solon-ai/issues" style={{color: '#2563eb', textDecoration: 'none'}} target="_blank" rel="noopener noreferrer">https://github.com/DontaRuffin/solon-ai/issues</a></li>
+              <li><strong>GitHub Issues:</strong> <a href="https://github.com/Solon-Dev/Solon/issues" style={{color: '#2563eb', textDecoration: 'none'}} target="_blank" rel="noopener noreferrer">https://github.com/Solon-Dev/Solon/issues</a></li>
             </ul>
           </section>
 
@@ -129,7 +129,9 @@ export default function PrivacyPolicy() {
           <p style={{marginTop: '0.5rem', fontSize: '0.875rem'}}>
             <Link href="/privacy" style={{marginRight: '1rem', color: '#2563eb'}}>Privacy Policy</Link>
             <span style={{marginRight: '1rem', color: '#cbd5e1'}}>•</span>
-            <Link href="/terms" style={{color: '#2563eb'}}>Terms of Service</Link>
+            <Link href="/terms" style={{marginRight: '1rem', color: '#2563eb'}}>Terms of Service</Link>
+            <span style={{marginRight: '1rem', color: '#cbd5e1'}}>•</span>
+            <a href="https://github.com/Solon-Dev/Solon/issues" target="_blank" rel="noopener noreferrer" style={{color: '#2563eb'}}>Report Issues</a>
           </p>
         </div>
       </footer>
