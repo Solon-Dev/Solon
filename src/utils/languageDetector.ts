@@ -55,7 +55,7 @@ export function detectLanguageFromDiff(diff: string): SupportedLanguage {
   }
 
   // If size is 1, return that language
-  return foundLanguages.values().next().value;
+  return foundLanguages.values().next().value as SupportedLanguage;
 }
 
 /**
