@@ -183,7 +183,9 @@ export default function Home() {
           <p style={{marginTop: '0.5rem', fontSize: '0.875rem'}}>
             <Link href="/privacy" style={{marginRight: '1rem', color: '#2563eb'}}>Privacy Policy</Link>
             <span style={{marginRight: '1rem', color: '#cbd5e1'}}>•</span>
-            <Link href="/terms" style={{color: '#2563eb'}}>Terms of Service</Link>
+            <Link href="/terms" style={{marginRight: '1rem', color: '#2563eb'}}>Terms of Service</Link>
+            <span style={{marginRight: '1rem', color: '#cbd5e1'}}>•</span>
+            <a href="https://github.com/Solon-Dev/Solon/issues" target="_blank" rel="noopener noreferrer" style={{color: '#2563eb'}}>Report Issues</a>
           </p>
         </div>
       </footer>
