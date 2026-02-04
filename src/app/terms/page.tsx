@@ -143,22 +143,6 @@ export default function TermsOfService() {
           </section>
 
           <section style={{marginBottom: '2.5rem'}}>
-            <h2 style={{fontSize: '1.5rem', fontWeight: 600, marginBottom: '1rem', color: '#1e293b'}}>Open Source</h2>
-            <p style={{color: '#475569', lineHeight: 1.7}}>
-              Solon AI&apos;s code is open source. See our{' '}
-              <a
-                href="https://github.com/Solon-Dev/Solon"
-                style={{color: '#2563eb', textDecoration: 'none'}}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                GitHub repository
-              </a>
-              {' '}for license details.
-            </p>
-          </section>
-
-          <section style={{marginBottom: '2.5rem'}}>
             <h2 style={{fontSize: '1.5rem', fontWeight: 600, marginBottom: '1rem', color: '#1e293b'}}>Governing Law</h2>
             <p style={{color: '#475569', lineHeight: 1.7}}>
               These terms are governed by the laws of the United States and the State of Pennsylvania.
@@ -168,12 +152,11 @@ export default function TermsOfService() {
           <section style={{marginBottom: '2.5rem'}}>
             <h2 style={{fontSize: '1.5rem', fontWeight: 600, marginBottom: '1rem', color: '#1e293b'}}>Support</h2>
             <p style={{color: '#475569', lineHeight: 1.7, marginBottom: '0.5rem'}}>
-              For technical support or questions:
+              For technical support or questions, contact us at:
             </p>
-            <ul style={{listStyle: 'none', padding: 0, color: '#475569', lineHeight: 1.8}}>
-              <li><strong>Email:</strong> <a href="mailto:donta.ruffin@gmail.com" style={{color: '#2563eb', textDecoration: 'none'}}>donta.ruffin@gmail.com</a></li>
-              <li><strong>GitHub Issues:</strong> <a href="https://github.com/Solon-Dev/Solon/issues" style={{color: '#2563eb', textDecoration: 'none'}} target="_blank" rel="noopener noreferrer">https://github.com/Solon-Dev/Solon/issues</a></li>
-            </ul>
+            <p style={{color: '#475569', lineHeight: 1.8}}>
+              <strong>Email:</strong> <a href="mailto:donta.ruffin@gmail.com" style={{color: '#2563eb', textDecoration: 'none'}}>donta.ruffin@gmail.com</a>
+            </p>
           </section>
 
           <div style={{borderTop: '1px solid #e2e8f0', paddingTop: '2rem', marginTop: '3rem'}}>
@@ -190,9 +173,7 @@ export default function TermsOfService() {
           <p style={{marginTop: '0.5rem', fontSize: '0.875rem'}}>
             <Link href="/privacy" style={{marginRight: '1rem', color: '#2563eb'}}>Privacy Policy</Link>
             <span style={{marginRight: '1rem', color: '#cbd5e1'}}>•</span>
-            <Link href="/terms" style={{marginRight: '1rem', color: '#2563eb'}}>Terms of Service</Link>
-            <span style={{marginRight: '1rem', color: '#cbd5e1'}}>•</span>
-            <a href="https://github.com/Solon-Dev/Solon/issues" target="_blank" rel="noopener noreferrer" style={{color: '#2563eb'}}>Report Issues</a>
+            <Link href="/terms" style={{color: '#2563eb'}}>Terms of Service</Link>
           </p>
         </div>
       </footer>
