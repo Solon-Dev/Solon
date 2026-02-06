@@ -21,6 +21,16 @@
 
 ---
 
+## 📚 Documentation
+
+Get started and learn how to optimize your workflow with Solon AI:
+
+- **[📖 Full Documentation](docs/README.md)** - Complete guide and overview
+- **[🚀 Getting Started](docs/getting-started.md)** - Your first code review in 5 minutes
+- **[✨ Best Practices](docs/best-practices.md)** - Optimize your workflow and review quality
+
+---
+
 ## 🚀 Setup (Takes 3 Minutes)
 
 ### Step 1: Get Your Anthropic API Key (FREE $5 Credit)
@@ -157,4 +167,4 @@ Yes! Works with both public and private repositories.
 
 **Built with ❤️ using Claude AI by Anthropic**
 
-[Install Solon AI](https://github.com/apps/solon-ai) | [Documentation](https://github.com/Solon-Dev/Solon/wiki) | [Support](https://github.com/Solon-Dev/Solon/issues)
+[Install Solon AI](https://github.com/apps/solon-ai) | [Documentation](docs/README.md) | [Support](https://github.com/Solon-Dev/Solon/issues)
