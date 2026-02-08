@@ -278,6 +278,18 @@ export async function POST(request: Request): Promise<Response> {
       );
     }
 
+    // Security: Prevent DoS by limiting diff size
+    const MAX_DIFF_LENGTH = 500000;
+    if (diff.length > MAX_DIFF_LENGTH) {
+      return NextResponse.json(
+        {
+          error: `Diff too large. Maximum allowed length is ${MAX_DIFF_LENGTH} characters.`,
+          diagnostics
+        },
+        { status: 413 }
+      );
+    }
+
     // Detect the programming language from the diff
     const detectedLanguage = detectLanguageFromDiff(diff);
     const langConfig = getLanguageConfig(detectedLanguage);
