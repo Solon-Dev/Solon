@@ -6,6 +6,10 @@
 
 [![Install on GitHub](https://img.shields.io/badge/Install-GitHub%20App-blue)](https://github.com/apps/solon-ai)
 [![Powered by Claude](https://img.shields.io/badge/Powered%20by-Claude%20AI-orange)](https://anthropic.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![GitHub Issues](https://img.shields.io/github/issues/Solon-Dev/Solon)](https://github.com/Solon-Dev/Solon/issues)
+[![GitHub Stars](https://img.shields.io/github/stars/Solon-Dev/Solon?style=social)](https://github.com/Solon-Dev/Solon)
 
 ---
 
@@ -157,14 +161,33 @@ Yes! Works with both public and private repositories.
 
 ---
 
+## 🤝 Contributing
+
+We love contributions! Solon AI is an open source project and we welcome:
+
+- 🐛 Bug reports and fixes
+- 💡 Feature requests and implementations
+- 📝 Documentation improvements
+- ✨ Code enhancements
+
+**Get started:**
+- Read our [Contributing Guide](CONTRIBUTING.md)
+- Check out [Good First Issues](https://github.com/Solon-Dev/Solon/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+- Review our [Code of Conduct](CONTRIBUTING.md#code-of-conduct)
+
+**Found a security issue?** Please report it responsibly via our [Security Policy](SECURITY.md).
+
+---
+
 ## 🤝 Support
 
 - 🐛 [Report bugs](https://github.com/Solon-Dev/Solon/issues)
 - 💡 [Request features](https://github.com/Solon-Dev/Solon/issues)
+- 💬 [Join discussions](https://github.com/Solon-Dev/Solon/discussions)
 - ⭐ Star this repo!
 
 ---
 
 **Built with ❤️ using Claude AI by Anthropic**
 
-[Install Solon AI](https://github.com/apps/solon-ai) | [Documentation](docs/README.md) | [Support](https://github.com/Solon-Dev/Solon/issues)
+[Install Solon AI](https://github.com/apps/solon-ai) | [Documentation](docs/README.md) | [Contributing](CONTRIBUTING.md) | [License](LICENSE) | [Security](SECURITY.md)
