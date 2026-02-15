@@ -17,11 +17,16 @@ jest.mock('@/lib/config/loadPlaybookConfig', () => ({
 
 describe('POST /api/analyze', () => {
   const originalEnv = process.env;
+  const originalFetch = global.fetch;
 
   beforeEach(() => {
     jest.resetModules();
     process.env = { ...originalEnv, ANTHROPIC_API_KEY: 'test-key' };
     jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
   });
 
   afterAll(() => {
@@ -66,5 +71,37 @@ describe('POST /api/analyze', () => {
     const body = response.body;
     expect(body).toHaveProperty('error');
     expect(body.error).toContain('too large');
+  });
+
+  it('should not leak runtime information in diagnostics', async () => {
+    // Mock successful fetch for Claude API
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            summary: 'test',
+            edgeCases: [],
+            unitTests: { filePath: 'test.ts', code: '// test' }
+          })
+        }]
+      })
+    });
+
+    const req = new Request('http://localhost/api/analyze', {
+      method: 'POST',
+      body: JSON.stringify({ diff: 'some diff' }),
+    });
+
+    const response = await POST(req);
+
+    // @ts-expect-error - we mocked NextResponse
+    const body = response.body;
+
+    expect(body).toHaveProperty('diagnostics');
+    expect(body.diagnostics).not.toHaveProperty('runtime');
+    expect(body.diagnostics).not.toHaveProperty('nodeVersion');
+    expect(body.diagnostics).toHaveProperty('timestamp');
   });
 });
