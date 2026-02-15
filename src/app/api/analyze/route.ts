@@ -260,9 +260,7 @@ export async function POST(request: Request): Promise<Response> {
     // Return diagnostic info first
     const diagnostics = {
       timestamp: new Date().toISOString(),
-      hasApiKey: !!process.env.ANTHROPIC_API_KEY,
-      runtime: process.env.VERCEL_REGION || 'local',
-      nodeVersion: process.version
+      hasApiKey: !!process.env.ANTHROPIC_API_KEY
     };
 
     const body = await request.json();
