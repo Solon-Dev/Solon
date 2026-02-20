@@ -243,25 +243,19 @@ export async function POST(request: Request): Promise<Response> {
       );
     }
 
-    // 2. Validation: Ensure API Key exists
-    // This protects YOU from paying. If they don't send a key, they don't get a review.
-    if (!apiKey || typeof apiKey !== 'string' || !apiKey.startsWith('sk-')) {
-      return NextResponse.json(
-        { error: 'Missing or invalid Anthropic API Key. Please provide apiKey in the request body.' },
-        { status: 401 }
-      );
-    }
-
-    // Security: Limit diff size
+    // Security: Prevent DoS by limiting diff size
     const MAX_DIFF_LENGTH = 500000;
     if (diff.length > MAX_DIFF_LENGTH) {
       return NextResponse.json(
-        { error: `Diff too large. Maximum allowed length is ${MAX_DIFF_LENGTH} characters.` },
+        {
+          error: `Diff too large. Maximum allowed length is ${MAX_DIFF_LENGTH} characters.`,
+          diagnostics
+        },
         { status: 413 }
       );
     }
 
-    // Detect language and load playbooks
+    // Detect the programming language from the diff
     const detectedLanguage = detectLanguageFromDiff(diff);
     const langConfig = getLanguageConfig(detectedLanguage);
     const playbooks = await loadEnabledPlaybooks();
