@@ -112,7 +112,7 @@ Git diff to analyze:
 
 interface ReviewResult {
   summary: string;
-  playbookResults?: string; // Optional - only present when playbooks are enabled
+  playbookResults?: string;
   edgeCases: string[];
   unitTests: {
     filePath: string;
@@ -123,28 +123,19 @@ interface ReviewResult {
 interface ErrorResult {
   error: string;
   details?: string;
-  stack?: string;
 }
 
-// This function now ONLY handles fetching and parsing from the API
-async function callClaudeAPI(diff: string, playbooks: Playbook[], langConfig: LanguageConfig): Promise<ReviewResult | ErrorResult> {
+// Updated to accept apiKey as a parameter
+async function callClaudeAPI(diff: string, apiKey: string, playbooks: Playbook[], langConfig: LanguageConfig): Promise<ReviewResult | ErrorResult> {
   try {
-    if (!process.env.ANTHROPIC_API_KEY) {
-      return {
-        error: "ANTHROPIC_API_KEY environment variable is not set",
-        details: "Configuration error"
-      };
-    }
-
     const masterPrompt = buildMasterPrompt(playbooks, langConfig);
     const finalPrompt = masterPrompt.replace('{raw_git_diff_string}', diff);
-    
-    // Use fetch instead of SDK to avoid Vercel compatibility issues
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'x-api-key': apiKey, // Uses the user's key
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
@@ -157,38 +148,38 @@ async function callClaudeAPI(diff: string, playbooks: Playbook[], langConfig: La
 
     if (!response.ok) {
       const errorText = await response.text();
-      return { 
+      return {
         error: `Anthropic API error: ${response.status}`,
         details: errorText
       };
     }
 
     const data = await response.json();
-    
+
     const responseBlock = data.content[0];
     if (responseBlock.type !== 'text') {
-      return { 
+      return {
         error: "Unexpected response type from Claude API",
         details: `Got type: ${responseBlock.type}`
       };
     }
 
     const responseText = responseBlock.text.trim();
-    
+
     // Robust JSON extraction logic
     const openBrace = responseText.indexOf('{');
     if (openBrace === -1) {
-      return { 
+      return {
         error: "No JSON object found in Claude response",
         details: responseText.substring(0, 200)
       };
     }
-    
+
     let braceCount = 0;
     let closeBrace = -1;
     let inString = false;
     let escaped = false;
-    
+
     for (let i = openBrace; i < responseText.length; i++) {
       const char = responseText[i];
 
@@ -214,97 +205,80 @@ async function callClaudeAPI(diff: string, playbooks: Playbook[], langConfig: La
         }
       }
     }
-    
+
     if (closeBrace === -1) {
-      return { 
+      return {
         error: "Malformed JSON in Claude response",
         details: responseText.substring(0, 200)
       };
     }
-    
+
     const jsonContent = responseText.substring(openBrace, closeBrace + 1);
 
     const analysis = JSON.parse(jsonContent);
-    
-    // Validate the structure of the parsed JSON
-    if (
-      typeof analysis !== 'object' ||
-      typeof analysis.summary !== 'string' ||
-      !Array.isArray(analysis.edgeCases) ||
-      typeof analysis.unitTests !== 'object'
-    ) {
-      return { 
-        error: "Invalid JSON structure from Claude API",
-        details: JSON.stringify(analysis)
-      };
-    }
-    
+
     return analysis as ReviewResult;
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    // Log stack trace securely on the server
     if (error instanceof Error && error.stack) {
       console.error('Claude API Error Stack:', error.stack);
     }
-    return { 
+    return {
       error: `Claude API analysis failed: ${errorMessage}`
     };
   }
 }
 
-
-// The POST handler now manages all HTTP request and response logic
 export async function POST(request: Request): Promise<Response> {
   try {
-    // Return diagnostic info first
-    const diagnostics = {
-      timestamp: new Date().toISOString(),
-      hasApiKey: !!process.env.ANTHROPIC_API_KEY,
-      runtime: process.env.VERCEL_REGION || 'local',
-      nodeVersion: process.version
-    };
-
     const body = await request.json();
-    const { diff } = body;
+    const { diff, apiKey } = body; // Extract apiKey from the request body
 
+    // 1. Validation: Ensure Diff exists
     if (!diff || typeof diff !== 'string' || diff.trim().length === 0) {
       return NextResponse.json(
-        {
-          error: 'Valid diff string is required',
-          diagnostics
-        },
+        { error: 'Valid diff string is required' },
         { status: 400 }
       );
     }
 
-    // Detect the programming language from the diff
+    // 2. Validation: Ensure API Key exists
+    // This protects YOU from paying. If they don't send a key, they don't get a review.
+    if (!apiKey || typeof apiKey !== 'string' || !apiKey.startsWith('sk-')) {
+      return NextResponse.json(
+        { error: 'Missing or invalid Anthropic API Key. Please provide apiKey in the request body.' },
+        { status: 401 }
+      );
+    }
+
+    // Security: Limit diff size
+    const MAX_DIFF_LENGTH = 500000;
+    if (diff.length > MAX_DIFF_LENGTH) {
+      return NextResponse.json(
+        { error: `Diff too large. Maximum allowed length is ${MAX_DIFF_LENGTH} characters.` },
+        { status: 413 }
+      );
+    }
+
+    // Detect language and load playbooks
     const detectedLanguage = detectLanguageFromDiff(diff);
     const langConfig = getLanguageConfig(detectedLanguage);
-    console.log(`Detected language: ${detectedLanguage}`);
-
-    // Load enabled playbooks from configuration
     const playbooks = await loadEnabledPlaybooks();
-    console.log(`Loaded ${playbooks.length} playbooks:`, playbooks.map(p => p.name).join(', '));
 
-    // Get the result from the API utility function
-    const analysis = await callClaudeAPI(diff, playbooks, langConfig);
-    
-    // Check if the utility function returned an error object
+    // 3. Execution: Call Claude using THEIR key
+    const analysis = await callClaudeAPI(diff, apiKey, playbooks, langConfig);
+
     if ('error' in analysis) {
-      return NextResponse.json({
-        ...analysis,
-        diagnostics
-      }, { status: 500 });
+      return NextResponse.json(analysis, { status: 500 });
     }
-    
-    // --- Formatting logic now lives in the POST handler ---
+
+    // Formatting logic
     let formatted = `### 🛡️ Solon AI Review
 
 **Summary:** ${analysis.summary}
 `;
 
-    // Add playbook results section if present
     if (analysis.playbookResults) {
       formatted += `
 ## 🎯 Team Standards Check
@@ -327,34 +301,26 @@ ${analysis.unitTests.code}
 *Detected Language: ${langConfig.expertise} | Test Framework: ${langConfig.testFramework}*
 `;
 
-    // Return a successful response with the original and formatted data
     return NextResponse.json({
       summary: analysis.summary,
       playbookResults: analysis.playbookResults,
       edgeCases: analysis.edgeCases,
       unitTests: analysis.unitTests,
-      formatted: formatted,
-      diagnostics
+      formatted: formatted
     });
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-    // Log stack trace securely on the server
     if (error instanceof Error && error.stack) {
       console.error('API Route Error Stack:', error.stack);
     }
-    
+
     return NextResponse.json(
-      { 
+      {
         error: "Internal server error",
-        details: errorMessage,
-        // stack property removed to prevent leakage
-        diagnostics: {
-          timestamp: new Date().toISOString(),
-          hasApiKey: !!process.env.ANTHROPIC_API_KEY
-        }
-      }, 
+        details: errorMessage
+      },
       { status: 500 }
     );
   }
