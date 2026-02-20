@@ -1,0 +1,1 @@
+{"error":"Anthropic API error: 401","details":"{\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"},\"request_id\":\"req_011CVPeBepg5P2jpkHpQ7LLz\"}","diagnostics":{"timestamp":"2025-11-22T21:31:28.128Z","hasApiKey":true,"runtime":"local","nodeVersion":"v20.12.2"}}

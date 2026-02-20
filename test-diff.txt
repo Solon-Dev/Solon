@@ -1,0 +1,52 @@
+diff --git a/src/components/UserProfile.tsx b/src/components/UserProfile.tsx
+new file mode 100644
+index 0000000..1234567
+--- /dev/null
++++ b/src/components/UserProfile.tsx
+@@ -0,0 +1,45 @@
++import React from 'react';
++
++// Hardcoded API key (SECURITY VIOLATION)
++const API_KEY = "sk_live_abc123xyz456secretkey";
++
++interface UserProfileProps {
++  userId: string;
++}
++
++export function UserProfile({ userId }: UserProfileProps) {
++  const [user, setUser] = React.useState<any>(null); // Using 'any' type
++
++  React.useEffect(() => {
++    // No error handling on async operation
++    fetchUserData(userId);
++  }, [userId]);
++
++  async function fetchUserData(id: string) {
++    console.log('Fetching user:', id); // console.log left in code
++
++    // SQL injection vulnerability - string concatenation
++    const query = `SELECT * FROM users WHERE id = '${id}'`;
++    const response = await fetch('/api/users?query=' + query);
++    const data = await response.json();
++    setUser(data);
++  }
++
++  if (!user) return <div>Loading...</div>;
++
++  return (
++    <div>
++      {/* Missing alt text on image (ACCESSIBILITY VIOLATION) */}
++      <img src={user.avatar} />
++
++      {/* Interactive div without keyboard support (ACCESSIBILITY VIOLATION) */}
++      <div onClick={() => alert('Profile clicked')}>
++        Click to view details
++      </div>
++
++      {/* Form input without label (ACCESSIBILITY VIOLATION) */}
++      <input type="text" placeholder="Search user..." />
++
++      <p style={{ color: '#999' }}>Username: {user.name}</p>
++    </div>
++  );
++}

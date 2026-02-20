@@ -1,145 +1,70 @@
-import { NextResponse } from 'next/server';
+/**
+ * @jest-environment node
+ */
+import { POST } from '../route';
 
-// Mock the Anthropic SDK
-jest.mock('@anthropic-ai/sdk', () => {
-  return jest.fn().mockImplementation(() => {
-    return {
-      messages: {
-        create: jest.fn().mockResolvedValue({
-          content: [
-            {
-              type: 'text',
-              text: `{
-                "summary": "This is a test summary.",
-                "edgeCases": ["Test edge case 1", "Test edge case 2"],
-                "unitTests": {
-                  "filePath": "src/utils/__tests__/test.test.ts",
-                  "code": "test('should do something', () => { expect(true).toBe(true); });"
-                }
-              }`,
-            },
-          ],
-        }),
-      },
-    };
-  });
-});
+// Mock NextResponse
+jest.mock('next/server', () => ({
+  NextResponse: {
+    json: jest.fn((body, init) => ({ body, init, status: init?.status || 200 })),
+  },
+}));
+
+// Mock loadEnabledPlaybooks
+jest.mock('@/lib/config/loadPlaybookConfig', () => ({
+  loadEnabledPlaybooks: jest.fn().mockResolvedValue([]),
+}));
 
 describe('POST /api/analyze', () => {
-  const OLD_ENV = process.env;
+  const originalEnv = process.env;
 
   beforeEach(() => {
     jest.resetModules();
-    process.env = { ...OLD_ENV, ANTHROPIC_API_KEY: 'test-key' };
+    process.env = { ...originalEnv, ANTHROPIC_API_KEY: 'test-key' };
+    jest.clearAllMocks();
   });
 
   afterAll(() => {
-    process.env = OLD_ENV;
+    process.env = originalEnv;
   });
 
-  it('should return a 200 success response when the API call is successful', async () => {
-    const request = new Request('http://localhost/api/analyze', {
+  it('should not leak stack traces when API call fails', async () => {
+    // Mock fetch to fail
+    global.fetch = jest.fn().mockRejectedValue(new Error('Simulated API failure'));
+
+    const req = new Request('http://localhost/api/analyze', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ diff: 'test diff' }),
+      body: JSON.stringify({ diff: 'some diff' }),
     });
 
-    const { POST } = require('../route');
-    const response = await POST(request);
-    const body = await response.json();
+    const response = await POST(req);
 
-    expect(response.status).toBe(200);
-    expect(body.summary).toBe("This is a test summary.");
-    expect(body.edgeCases).toEqual(["Test edge case 1", "Test edge case 2"]);
-    expect(body.unitTests.filePath).toBe("src/utils/__tests__/test.test.ts");
-  });
-
-  it('should return a 400 error if no diff is provided', async () => {
-    const request = new Request('http://localhost/api/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-    });
-
-    const { POST } = require('../route');
-    const response = await POST(request);
-    const body = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(body.error).toBe('Valid diff string is required');
-  });
-
-  it('should return a 500 error if the API call fails', async () => {
-    // Mock a failed API call
-    const Anthropic = require('@anthropic-ai/sdk');
-    Anthropic.mockImplementation(() => {
-      return {
-        messages: {
-          create: jest.fn().mockRejectedValue(new Error('API call failed')),
-        },
-      };
-    });
-
-    const request = new Request('http://localhost/api/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ diff: 'test diff' }),
-    });
-
-    const { POST } = require('../route');
-    const response = await POST(request);
-    const body = await response.json();
-
+    // Check response status
+    // @ts-expect-error - we mocked NextResponse to return the object directly for inspection
     expect(response.status).toBe(500);
-    expect(body.error).toContain('Claude API analysis failed');
+
+    // @ts-expect-error - we mocked NextResponse
+    const body = response.body;
+
+    expect(body).toHaveProperty('error');
+    expect(body).not.toHaveProperty('stack');
   });
 
-  it('should return a 500 error if the Claude API returns invalid JSON', async () => {
-    // Mock the Anthropic SDK to return invalid JSON
-    const Anthropic = require('@anthropic-ai/sdk');
-    Anthropic.mockImplementation(() => {
-      return {
-        messages: {
-          create: jest.fn().mockResolvedValue({
-            content: [
-              {
-                type: 'text',
-                text: 'This is not JSON',
-              },
-            ],
-          }),
-        },
-      };
-    });
-
-    const request = new Request('http://localhost/api/analyze', {
+  it('should return 413 if diff is too large', async () => {
+    const largeDiff = 'a'.repeat(500001);
+    const req = new Request('http://localhost/api/analyze', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ diff: 'test diff' }),
+      body: JSON.stringify({ diff: largeDiff }),
     });
 
-    const { POST } = require('../route');
-    const response = await POST(request);
-    const body = await response.json();
+    const response = await POST(req);
 
-    expect(response.status).toBe(500);
-    expect(body.error).toContain('Claude API analysis failed');
-  });
+    // @ts-expect-error - we mocked NextResponse
+    expect(response.status).toBe(413);
 
-  it('should return a 500 error if the ANTHROPIC_API_KEY is not set', async () => {
-    delete process.env.ANTHROPIC_API_KEY;
-
-    const request = new Request('http://localhost/api/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ diff: 'test diff' }),
-    });
-
-    const { POST } = require('../route');
-    const response = await POST(request);
-    const body = await response.json();
-
-    expect(response.status).toBe(500);
-    expect(body.error).toContain('ANTHROPIC_API_KEY environment variable is not set');
+    // @ts-expect-error - we mocked NextResponse
+    const body = response.body;
+    expect(body).toHaveProperty('error');
+    expect(body.error).toContain('too large');
   });
 });

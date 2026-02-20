@@ -1,8 +1,75 @@
 import { NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+import { loadEnabledPlaybooks } from '@/lib/config/loadPlaybookConfig';
+import { Playbook } from '@/lib/playbooks/types';
+import {
+  detectLanguageFromDiff,
+  getLanguageConfig,
+  getLanguageBestPractices,
+  getLanguageSecurityConsiderations,
+  type LanguageConfig
+} from '@/utils/languageDetector';
 
-const masterPrompt = `
-You are Solon, an expert code reviewer specializing in JavaScript and TypeScript.
+// Force Node.js runtime for better compatibility
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+/**
+ * Generate the master prompt with optional playbook integration and language awareness
+ */
+function buildMasterPrompt(playbooks: Playbook[], langConfig: LanguageConfig): string {
+  const hasPlaybooks = playbooks.length > 0;
+
+  let playbooksSection = '';
+  if (hasPlaybooks) {
+    playbooksSection = `
+CRITICAL: Check this PR against the following team standards:
+
+${playbooks.map(playbook => `
+### ${playbook.name} Standards
+${playbook.description}
+
+${playbook.rules.map(rule => {
+  const severityEmoji = rule.severity === 'blocking' ? '🚫' : rule.severity === 'warning' ? '⚠️' : 'ℹ️';
+  let ruleText = `- **[${severityEmoji} ${rule.severity.toUpperCase()}]** ${rule.description}`;
+
+  if (rule.examples) {
+    if (rule.examples.violation) {
+      ruleText += `\n  ❌ Violation: \`${rule.examples.violation}\``;
+    }
+    if (rule.examples.correct) {
+      ruleText += `\n  ✅ Correct: \`${rule.examples.correct}\``;
+    }
+  }
+
+  return ruleText;
+}).join('\n')}
+`).join('\n')}
+
+For each standard:
+1. Review if the PR code affects this area
+2. Check for compliance with the rule
+3. If violations found: cite specific file names and line numbers, explain the issue, and suggest fixes
+4. Use these status indicators:
+   - ✅ Passing (no violations found)
+   - ⚠️ Warning (minor issues or suggestions)
+   - 🚫 Blocking (must be fixed before merge)
+`;
+  }
+
+  const bestPractices = getLanguageBestPractices(langConfig.language);
+  const securityConsiderations = getLanguageSecurityConsiderations(langConfig.language);
+
+  // Build test file path example based on language
+  const testFileExample = langConfig.language === 'rust'
+    ? 'src/lib.rs or tests/integration_test.rs'
+    : langConfig.language === 'python'
+    ? `tests/test_module${langConfig.testFileExtension}`
+    : `path/to/test/file${langConfig.testFileExtension}`;
+
+  return `
+You are Solon, an expert code reviewer specializing in ${langConfig.expertise}.
+
+${hasPlaybooks ? playbooksSection : ''}
 
 Analyze the following git diff and provide a thorough code review focusing on:
 - Bugs and logic errors
@@ -11,21 +78,29 @@ Analyze the following git diff and provide a thorough code review focusing on:
 - Security vulnerabilities
 - Best practices and code quality
 
+Language-specific considerations for ${langConfig.expertise}:${bestPractices}
+
+Security focus areas:${securityConsiderations}
+
 Your response MUST be valid JSON with this exact structure:
 {
   "summary": "A concise 2-3 sentence analysis of the code changes",
+  ${hasPlaybooks ? '"playbookResults": "Formatted markdown section with playbook check results. For each playbook, show rule-by-rule compliance status with file/line citations for violations",' : ''}
   "edgeCases": ["edge case 1", "edge case 2"],
   "unitTests": {
-    "filePath": "path/to/test/file.test.js",
-    "code": "complete unit test code with assertions"
+    "filePath": "${testFileExample}",
+    "code": "complete unit test code with assertions using ${langConfig.testFramework}"
   }
 }
 
 Requirements:
 - Provide actionable, specific feedback
 - Identify actual issues, not just style preferences
-- Generate complete, runnable unit tests using Jest syntax
+- Generate complete, runnable unit tests using ${langConfig.testFramework} syntax and idioms
+- For ${langConfig.language} code, follow ${langConfig.language}-specific conventions and best practices
 - If no significant issues found, acknowledge good practices
+${hasPlaybooks ? '- For playbookResults: Format as clear markdown with headings, checkboxes, and code examples. Include file paths and line numbers for all violations. Use \\n for line breaks within the string value' : ''}
+- Return ONLY valid JSON - use escaped newlines (\\n) not literal newlines in string values
 - Return ONLY the JSON object, no markdown or additional text
 
 Git diff to analyze:
@@ -33,9 +108,11 @@ Git diff to analyze:
 {raw_git_diff_string}
 </diff>
 `;
+}
 
 interface ReviewResult {
   summary: string;
+  playbookResults?: string;
   edgeCases: string[];
   unitTests: {
     filePath: string;
@@ -45,144 +122,199 @@ interface ReviewResult {
 
 interface ErrorResult {
   error: string;
+  details?: string;
 }
 
-// This function now ONLY handles fetching and parsing from the API
-async function callClaudeAPI(diff: string): Promise<ReviewResult | ErrorResult> {
+// Updated to accept apiKey as a parameter
+async function callClaudeAPI(diff: string, apiKey: string, playbooks: Playbook[], langConfig: LanguageConfig): Promise<ReviewResult | ErrorResult> {
   try {
-    if (!process.env.ANTHROPIC_API_KEY) {
-      throw new Error("ANTHROPIC_API_KEY environment variable is not set");
+    const masterPrompt = buildMasterPrompt(playbooks, langConfig);
+    const finalPrompt = masterPrompt.replace('{raw_git_diff_string}', diff);
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey, // Uses the user's key
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: "claude-3-haiku-20240307",
+        max_tokens: 4096,
+        temperature: 0.1,
+        messages: [{ role: "user", content: finalPrompt }]
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        error: `Anthropic API error: ${response.status}`,
+        details: errorText
+      };
     }
 
-    const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
+    const data = await response.json();
 
-    const finalPrompt = masterPrompt.replace('{raw_git_diff_string}', diff);
-    
-    const response = await anthropic.messages.create({
-      model: "claude-3-sonnet-20240229", // Using a stable model name
-      max_tokens: 4096,
-      temperature: 0.1,
-      messages: [{ role: "user", content: finalPrompt }],
-    });
-
-    const responseBlock = response.content[0];
+    const responseBlock = data.content[0];
     if (responseBlock.type !== 'text') {
-      throw new Error("Unexpected response type from Claude API");
+      return {
+        error: "Unexpected response type from Claude API",
+        details: `Got type: ${responseBlock.type}`
+      };
     }
 
     const responseText = responseBlock.text.trim();
-    
+
     // Robust JSON extraction logic
     const openBrace = responseText.indexOf('{');
     if (openBrace === -1) {
-      throw new Error("No JSON object found in Claude response");
+      return {
+        error: "No JSON object found in Claude response",
+        details: responseText.substring(0, 200)
+      };
     }
-    
+
     let braceCount = 0;
     let closeBrace = -1;
-    
+    let inString = false;
+    let escaped = false;
+
     for (let i = openBrace; i < responseText.length; i++) {
-      if (responseText[i] === '{') {
-        braceCount++;
-      } else if (responseText[i] === '}') {
-        braceCount--;
-        if (braceCount === 0) {
-          closeBrace = i;
-          break;
+      const char = responseText[i];
+
+      if (inString) {
+        if (escaped) {
+          escaped = false;
+        } else if (char === '\\') {
+          escaped = true;
+        } else if (char === '"') {
+          inString = false;
+        }
+      } else {
+        if (char === '"') {
+          inString = true;
+        } else if (char === '{') {
+          braceCount++;
+        } else if (char === '}') {
+          braceCount--;
+          if (braceCount === 0) {
+            closeBrace = i;
+            break;
+          }
         }
       }
     }
-    
+
     if (closeBrace === -1) {
-      throw new Error("Malformed JSON in Claude response");
+      return {
+        error: "Malformed JSON in Claude response",
+        details: responseText.substring(0, 200)
+      };
     }
-    
+
     const jsonContent = responseText.substring(openBrace, closeBrace + 1);
-    
+
     const analysis = JSON.parse(jsonContent);
-    
-    // Validate the structure of the parsed JSON
-    if (
-      typeof analysis !== 'object' ||
-      typeof analysis.summary !== 'string' ||
-      !Array.isArray(analysis.edgeCases) ||
-      typeof analysis.unitTests !== 'object' ||
-      typeof analysis.unitTests.filePath !== 'string' ||
-      typeof analysis.unitTests.code !== 'string'
-    ) {
-      throw new Error("Invalid JSON structure from Claude API");
-    }
-    
+
     return analysis as ReviewResult;
 
   } catch (error) {
-    // Proper error handling, logging generic soft error
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    return { 
-      error: `Claude API analysis failed: ${errorMessage}` 
+    if (error instanceof Error && error.stack) {
+      console.error('Claude API Error Stack:', error.stack);
+    }
+    return {
+      error: `Claude API analysis failed: ${errorMessage}`
     };
   }
 }
 
-
-// The POST handler now manages all HTTP request and response logic
 export async function POST(request: Request): Promise<Response> {
   try {
     const body = await request.json();
-    const { diff } = body;
-    
+    const { diff, apiKey } = body; // Extract apiKey from the request body
+
+    // 1. Validation: Ensure Diff exists
     if (!diff || typeof diff !== 'string' || diff.trim().length === 0) {
       return NextResponse.json(
-        { error: 'Valid diff string is required' }, 
+        { error: 'Valid diff string is required' },
         { status: 400 }
       );
     }
-    
-    // Get the result from the API utility function
-    const analysis = await callClaudeAPI(diff);
-    
-    // Check if the utility function returned an error object
+
+    // Security: Prevent DoS by limiting diff size
+    const MAX_DIFF_LENGTH = 500000;
+    if (diff.length > MAX_DIFF_LENGTH) {
+      return NextResponse.json(
+        {
+          error: `Diff too large. Maximum allowed length is ${MAX_DIFF_LENGTH} characters.`,
+          diagnostics
+        },
+        { status: 413 }
+      );
+    }
+
+    // Detect the programming language from the diff
+    const detectedLanguage = detectLanguageFromDiff(diff);
+    const langConfig = getLanguageConfig(detectedLanguage);
+    const playbooks = await loadEnabledPlaybooks();
+
+    // 3. Execution: Call Claude using THEIR key
+    const analysis = await callClaudeAPI(diff, apiKey, playbooks, langConfig);
+
     if ('error' in analysis) {
       return NextResponse.json(analysis, { status: 500 });
     }
-    
-    // --- Formatting logic now lives in the POST handler ---
-    const formatted = `### 🛡️ Solon AI Review
+
+    // Formatting logic
+    let formatted = `### 🛡️ Solon AI Review
 
 **Summary:** ${analysis.summary}
+`;
 
+    if (analysis.playbookResults) {
+      formatted += `
+## 🎯 Team Standards Check
+
+${analysis.playbookResults}
+`;
+    }
+
+    formatted += `
 **Edge Cases:**
 ${analysis.edgeCases.map(ec => `- ${ec}`).join('\n')}
 
 **Suggested Unit Tests:**
-\`\`\`typescript
+\`\`\`${langConfig.syntaxHighlight}
 // ${analysis.unitTests.filePath}
 ${analysis.unitTests.code}
 \`\`\`
+
+---
+*Detected Language: ${langConfig.expertise} | Test Framework: ${langConfig.testFramework}*
 `;
 
-    // Return a successful response with the original and formatted data
     return NextResponse.json({
       summary: analysis.summary,
+      playbookResults: analysis.playbookResults,
       edgeCases: analysis.edgeCases,
       unitTests: analysis.unitTests,
       formatted: formatted
     });
 
   } catch (error) {
-    console.error("POST handler error:", error);
-    
-    if (error instanceof SyntaxError) {
-      return NextResponse.json(
-        { error: "Invalid JSON in request body" }, 
-        { status: 400 }
-      );
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    if (error instanceof Error && error.stack) {
+      console.error('API Route Error Stack:', error.stack);
     }
-    
+
     return NextResponse.json(
-      { error: "Internal server error" }, 
+      {
+        error: "Internal server error",
+        details: errorMessage
+      },
       { status: 500 }
     );
   }
