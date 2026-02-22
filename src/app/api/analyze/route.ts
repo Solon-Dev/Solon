@@ -129,7 +129,9 @@ interface ErrorResult {
 async function callClaudeAPI(diff: string, apiKey: string, playbooks: Playbook[], langConfig: LanguageConfig): Promise<ReviewResult | ErrorResult> {
   try {
     const masterPrompt = buildMasterPrompt(playbooks, langConfig);
-    const finalPrompt = masterPrompt.replace('{raw_git_diff_string}', diff);
+    // Security: Escape closing tags to prevent prompt injection and use callback for safe replacement
+    const safeDiff = diff.replace(/<\/diff>/g, '<\\/diff>');
+    const finalPrompt = masterPrompt.replace('{raw_git_diff_string}', () => safeDiff);
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -248,8 +250,7 @@ export async function POST(request: Request): Promise<Response> {
     if (diff.length > MAX_DIFF_LENGTH) {
       return NextResponse.json(
         {
-          error: `Diff too large. Maximum allowed length is ${MAX_DIFF_LENGTH} characters.`,
-          diagnostics
+          error: `Diff too large. Maximum allowed length is ${MAX_DIFF_LENGTH} characters.`
         },
         { status: 413 }
       );
