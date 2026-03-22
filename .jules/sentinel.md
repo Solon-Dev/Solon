@@ -1,0 +1,6 @@
+# Sentinel's Journal
+
+## 2025-05-18 - LLM Prompt Injection via Regex Replacement Tokens
+**Vulnerability:** User-controlled input (like git diffs) passed directly into `String.prototype.replace(pattern, userInput)` can trigger unintended substitutions if it contains regex replacement tokens like `$&`, `$1`, `` $` ``, or `$'`. Attackers can use this to inject the matched string into the output or overwrite intended prompts. Also, if user input is framed with XML/HTML tags (like `<diff>userInput</diff>`), closing tags inside the user input can prematurely close the block and allow the user to append system instructions.
+**Learning:** `String.prototype.replace` performs a special evaluation of the second parameter if it is a string. When building prompts or inserting user data into templates via regex/string replacement, this evaluation can act as an injection vector.
+**Prevention:** Always sanitize XML/HTML block boundaries in user input (e.g., escaping `</diff>` to `<\\/diff>`). To safely replace patterns with untrusted user input without token evaluation, ALWAYS pass a callback function to `replace`: `string.replace(pattern, () => untrustedInput)`.

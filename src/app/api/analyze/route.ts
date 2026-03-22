@@ -129,7 +129,8 @@ interface ErrorResult {
 async function callClaudeAPI(diff: string, apiKey: string, playbooks: Playbook[], langConfig: LanguageConfig): Promise<ReviewResult | ErrorResult> {
   try {
     const masterPrompt = buildMasterPrompt(playbooks, langConfig);
-    const finalPrompt = masterPrompt.replace('{raw_git_diff_string}', diff);
+    // Security: Use callback to prevent replacement string patterns (e.g. $&, $1) from being evaluated
+    const finalPrompt = masterPrompt.replace('{raw_git_diff_string}', () => diff);
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -246,6 +247,7 @@ export async function POST(request: Request): Promise<Response> {
     // Security: Prevent DoS by limiting diff size
     const MAX_DIFF_LENGTH = 500000;
     if (diff.length > MAX_DIFF_LENGTH) {
+      const diagnostics = { length: diff.length, maxAllowed: MAX_DIFF_LENGTH };
       return NextResponse.json(
         {
           error: `Diff too large. Maximum allowed length is ${MAX_DIFF_LENGTH} characters.`,
@@ -255,13 +257,17 @@ export async function POST(request: Request): Promise<Response> {
       );
     }
 
+    // Security: Prevent Prompt Injection attacks
+    // Sanitize diff to prevent breaking out of the <diff> tag
+    const sanitizedDiff = diff.replace(/<\/diff>/g, '<\\/diff>');
+
     // Detect the programming language from the diff
-    const detectedLanguage = detectLanguageFromDiff(diff);
+    const detectedLanguage = detectLanguageFromDiff(sanitizedDiff);
     const langConfig = getLanguageConfig(detectedLanguage);
     const playbooks = await loadEnabledPlaybooks();
 
     // 3. Execution: Call Claude using THEIR key
-    const analysis = await callClaudeAPI(diff, apiKey, playbooks, langConfig);
+    const analysis = await callClaudeAPI(sanitizedDiff, apiKey, playbooks, langConfig);
 
     if ('error' in analysis) {
       return NextResponse.json(analysis, { status: 500 });
