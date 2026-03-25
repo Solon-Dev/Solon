@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { db } from '@/lib/db';
 import { loadEnabledPlaybooks } from '@/lib/config/loadPlaybookConfig';
 import { Playbook } from '@/lib/playbooks/types';
 import {
@@ -233,7 +234,7 @@ async function callClaudeAPI(diff: string, apiKey: string, playbooks: Playbook[]
 export async function POST(request: Request): Promise<Response> {
   try {
     const body = await request.json();
-    const { diff, apiKey } = body; // Extract apiKey from the request body
+    const { diff, apiKey, repoFullName, prNumber, prTitle } = body; // Extract apiKey and PR metadata from the request body
 
     // 1. Validation: Ensure Diff exists
     if (!diff || typeof diff !== 'string' || diff.trim().length === 0) {
@@ -294,6 +295,40 @@ ${analysis.unitTests.code}
 ---
 *Detected Language: ${langConfig.expertise} | Test Framework: ${langConfig.testFramework}*
 `;
+
+    // Persist review to DB if repo info is provided
+    if (repoFullName) {
+      try {
+        const repoResult = await db(
+          'SELECT id FROM repos WHERE full_name = $1',
+          [repoFullName]
+        );
+        if (repoResult.length > 0) {
+          const repoId = (repoResult[0] as { id: number }).id;
+          const status = (analysis.playbookResults as unknown as Array<{ violations?: Array<{ severity: string }> }>)
+            ?.some((r) => r.violations?.some((v) => v.severity === 'blocking'))
+            ? 'fail'
+            : 'pass';
+          await db(
+            `INSERT INTO reviews (repo_id, pr_number, pr_title, summary, playbook_results, edge_cases, unit_tests, status)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+            [
+              repoId,
+              prNumber ?? 0,
+              prTitle ?? '',
+              analysis.summary,
+              JSON.stringify(analysis.playbookResults ?? null),
+              JSON.stringify(analysis.edgeCases),
+              JSON.stringify(analysis.unitTests),
+              status,
+            ]
+          );
+        }
+      } catch (dbErr) {
+        // Don't fail the review if DB write fails — log and continue
+        console.error('Failed to persist review to DB:', dbErr);
+      }
+    }
 
     return NextResponse.json({
       summary: analysis.summary,
