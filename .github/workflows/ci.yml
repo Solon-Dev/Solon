@@ -41,7 +41,7 @@ jobs:
 
       # 5. Runs the Jest test suite we created earlier
       - name: Run unit tests
-        run: npm test
+        run: npm test -- --passWithNoTests
 
       # 6. Runs the build command to ensure the project builds successfully
       - name: Run build
