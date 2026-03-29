@@ -130,7 +130,9 @@ interface ErrorResult {
 async function callClaudeAPI(diff: string, apiKey: string, playbooks: Playbook[], langConfig: LanguageConfig): Promise<ReviewResult | ErrorResult> {
   try {
     const masterPrompt = buildMasterPrompt(playbooks, langConfig);
-    const finalPrompt = masterPrompt.replace('{raw_git_diff_string}', diff);
+    // Sanitize user input to prevent prompt injection and use callback replacement
+    const sanitizedDiff = diff.replace(/<\/diff>/g, '<\\/diff>');
+    const finalPrompt = masterPrompt.replace('{raw_git_diff_string}', () => sanitizedDiff);
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -235,6 +237,13 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const body = await request.json();
     const { diff, apiKey, repoFullName, prNumber, prTitle } = body; // Extract apiKey and PR metadata from the request body
+
+    const diagnostics = {
+      timestamp: new Date().toISOString(),
+      hasApiKey: !!apiKey,
+      runtime: process.env.VERCEL_REGION || 'local',
+      nodeVersion: process.version
+    };
 
     // 1. Validation: Ensure Diff exists
     if (!diff || typeof diff !== 'string' || diff.trim().length === 0) {
