@@ -288,8 +288,10 @@ export const ALL_PLAYBOOKS: Playbook[] = [
  * @returns Array of matching Playbook objects
  */
 export function getPlaybooksByNames(names: string[]): Playbook[] {
-  const normalizedNames = names.map(name => name.toLowerCase());
+  // Performance optimization: use a Set for O(1) lookups instead of O(n) array includes,
+  // which turns the overall filter from O(n*m) to O(n).
+  const normalizedNames = new Set(names.map(name => name.toLowerCase()));
   return ALL_PLAYBOOKS.filter(playbook =>
-    normalizedNames.includes(playbook.name.toLowerCase())
+    normalizedNames.has(playbook.name.toLowerCase())
   );
 }
