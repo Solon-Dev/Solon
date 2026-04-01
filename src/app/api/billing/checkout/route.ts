@@ -3,7 +3,12 @@ import Stripe from 'stripe';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+export const dynamic = 'force-dynamic';
+
+function getStripe() {
+  if (!process.env.STRIPE_SECRET_KEY) throw new Error('STRIPE_SECRET_KEY is not set');
+  return new Stripe(process.env.STRIPE_SECRET_KEY);
+}
 
 export async function POST() {
   const session = await getServerSession(authOptions);
@@ -13,7 +18,7 @@ export async function POST() {
   }
 
   try {
-    const checkout = await stripe.checkout.sessions.create({
+    const checkout = await getStripe().checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [
