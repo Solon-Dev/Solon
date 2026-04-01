@@ -301,7 +301,7 @@ ${analysis.unitTests.code}
         const repoResult = await db(
           'SELECT id FROM repos WHERE full_name = $1',
           [repoFullName]
-        );
+        ) as Array<{ id: number }>;
         if (repoResult.length > 0) {
           const repoId = (repoResult[0] as { id: number }).id;
           const status = (analysis.playbookResults as unknown as Array<{ violations?: Array<{ severity: string }> }>)
