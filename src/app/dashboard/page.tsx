@@ -28,7 +28,7 @@ export default async function DashboardPage() {
   try {
     const githubId = session.user.githubId;
 
-    const reposResult = await db(
+    const reposResult = await db<{ id: number }>(
       `SELECT r.id FROM repos r
        JOIN users u ON u.id = r.user_id
        WHERE u.github_id = $1 AND r.is_active = true`,
@@ -37,7 +37,7 @@ export default async function DashboardPage() {
     connectedRepoCount = reposResult.length;
 
     if (reposResult.length > 0) {
-      const repoIds = reposResult.map((r: { id: number }) => r.id);
+      const repoIds = reposResult.map((r) => r.id);
       const placeholders = repoIds.map((_: number, i: number) => `$${i + 1}`).join(',');
 
       const reviewsResult = await db(
