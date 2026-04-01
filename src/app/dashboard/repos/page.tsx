@@ -56,7 +56,7 @@ export default function ReposPage() {
   const isConnected = (repoId: string) =>
     connectedRepos.some((r) => r.github_repo_id === repoId);
 
-  async function toggleRepo(repo: GitHubRepo) {
+async function toggleRepo(repo: GitHubRepo) {
     setSaving(repo.github_repo_id);
     setError(null);
     try {
@@ -78,8 +78,12 @@ export default function ReposPage() {
 
       const data = await res.json();
       setConnectedRepos(data.repos ?? []);
-    } catch (err: any) {
-      setError(err.message ?? 'Failed to update repo connection. Try again.');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Failed to update repo connection. Try again.');
+      }
       console.error(err);
     } finally {
       setSaving(null);
