@@ -33,9 +33,35 @@ export async function GET(request: Request) {
     );
 
     if (listGithub) {
-      // Proxy GitHub API to get user repos using their stored token
-      // (requires access token stored in session — advanced; return empty for now)
-      return NextResponse.json({ repos, githubRepos: [] });
+      const accessToken = (session as any).user.accessToken
+      if (!accessToken) {
+        return NextResponse.json({ repos, githubRepos: [] })
+      }
+
+      // Fetch all repos from GitHub (up to 100)
+      const githubRes = await fetch(
+        'https://api.github.com/user/repos?per_page=100&sort=updated&affiliation=owner',
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: 'application/vnd.github.v3+json',
+          },
+        }
+      )
+
+      if (!githubRes.ok) {
+        return NextResponse.json({ repos, githubRepos: [] })
+      }
+
+      const githubRepos = await githubRes.json()
+      const simplified = githubRepos.map((r: any) => ({
+        github_repo_id: String(r.id),
+        name: r.name,
+        full_name: r.full_name,
+        private: r.private,
+      }))
+
+      return NextResponse.json({ repos, githubRepos: simplified })
     }
 
     return NextResponse.json({ repos });

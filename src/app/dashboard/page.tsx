@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { db } from '@/lib/db';
 import Link from 'next/link';
+import SignOutButton from '@/components/SignOutButton';
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -102,6 +103,7 @@ export default async function DashboardPage() {
             )}
             {session.user.name}
           </span>
+          <SignOutButton />
         </div>
       </nav>
 
