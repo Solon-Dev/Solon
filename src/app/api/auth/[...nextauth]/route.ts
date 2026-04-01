@@ -18,12 +18,13 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn({ user, profile }: { user: User; profile?: Profile }) {
       try {
-        await db`
-          INSERT INTO users (github_id, email, name, avatar_url)
-          VALUES (${String(profile?.id)}, ${user.email}, ${user.name}, ${user.image})
+        await db(
+          `INSERT INTO users (github_id, email, name, avatar_url)
+          VALUES ($1, $2, $3, $4)
           ON CONFLICT (github_id) DO UPDATE
-          SET email = ${user.email}, name = ${user.name}, avatar_url = ${user.image}
-        `
+          SET email = $2, name = $3, avatar_url = $4`,
+          [String(profile?.id), user.email, user.name, user.image]
+        )
         return true
       } catch (error) {
         console.error('Error saving user:', error)
