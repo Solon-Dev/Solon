@@ -1,7 +1,14 @@
 import { neon } from '@neondatabase/serverless'
 
-if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL is not set')
+function getDb() {
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL is not set')
+  }
+  return neon(process.env.DATABASE_URL)
 }
 
-export const db = neon(process.env.DATABASE_URL)
+export const db = new Proxy({} as ReturnType<typeof neon>, {
+  get(_target, prop) {
+    return getDb()[prop as keyof ReturnType<typeof neon>]
+  },
+})
