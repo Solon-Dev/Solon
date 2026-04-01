@@ -18,7 +18,8 @@ export async function GET(request: Request) {
     const userResult = await db(
       'SELECT id FROM users WHERE github_id = $1',
       [session.user.githubId]
-    );
+    ) as Array<Record<string, unknown>>;
+
 
     if (userResult.length === 0) {
       return NextResponse.json({ repos: [], githubRepos: [] });
@@ -92,7 +93,8 @@ export async function POST(request: Request) {
     const userResult = await db(
       'SELECT id FROM users WHERE github_id = $1',
       [session.user.githubId]
-    );
+    ) as Array<Record<string, unknown>>;
+
 
     if (userResult.length === 0) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
