@@ -21,7 +21,8 @@ export async function GET(_req: Request, context: RouteContext) {
     `SELECT r.id FROM repos r JOIN users u ON u.id = r.user_id
      WHERE r.id = $1 AND u.github_id = $2`,
     [repoId, session.user.githubId]
-  );
+  ) as Array<Record<string, unknown>>;
+
 
   if (owned.length === 0) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -61,7 +62,8 @@ export async function POST(req: Request, context: RouteContext) {
     `SELECT r.id FROM repos r JOIN users u ON u.id = r.user_id
      WHERE r.id = $1 AND u.github_id = $2`,
     [repoId, session.user.githubId]
-  );
+  ) as Array<Record<string, unknown>>;
+
 
   if (owned.length === 0) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
