@@ -1,3 +1,4 @@
+MATCH_FOUND
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { loadEnabledPlaybooks } from '@/lib/config/loadPlaybookConfig';
@@ -249,8 +250,7 @@ export async function POST(request: Request): Promise<Response> {
     if (diff.length > MAX_DIFF_LENGTH) {
       return NextResponse.json(
         {
-          error: `Diff too large. Maximum allowed length is ${MAX_DIFF_LENGTH} characters.`,
-          diagnostics
+          error: `Diff too large. Maximum allowed length is ${MAX_DIFF_LENGTH} characters. Received ${diff.length} characters.`
         },
         { status: 413 }
       );
