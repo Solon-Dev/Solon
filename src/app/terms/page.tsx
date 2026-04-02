@@ -62,7 +62,7 @@ export default function TermsOfService() {
           },
           {
             title: 'AI Review Disclaimer',
-            content: `Solon AI uses Anthropic's Claude API to generate review feedback. Reviews are suggestions, not guarantees. You are responsible for:
+            content: `Solon AI uses Anthropic&apos;s Claude API to generate review feedback. Reviews are suggestions, not guarantees. You are responsible for:
 
 - Reviewing all AI feedback before acting on it
 - Verifying the accuracy of recommendations
