@@ -235,6 +235,7 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const body = await request.json();
     const { diff, apiKey, repoFullName, prNumber, prTitle } = body; // Extract apiKey and PR metadata from the request body
+    const resolvedApiKey = apiKey || process.env.ANTHROPIC_API_KEY;
 
     // 1. Validation: Ensure Diff exists
     if (!diff || typeof diff !== 'string' || diff.trim().length === 0) {
@@ -260,8 +261,11 @@ export async function POST(request: Request): Promise<Response> {
     const langConfig = getLanguageConfig(detectedLanguage);
     const playbooks = await loadEnabledPlaybooks();
 
-    // 3. Execution: Call Claude using THEIR key
-    const analysis = await callClaudeAPI(diff, apiKey, playbooks, langConfig);
+    // 3. Execution: Call Claude using provided key or env fallback
+    if (!resolvedApiKey) {
+      return NextResponse.json({ error: 'No API key provided' }, { status: 400 });
+    }
+    const analysis = await callClaudeAPI(diff, resolvedApiKey, playbooks, langConfig);
 
     if ('error' in analysis) {
       return NextResponse.json(analysis, { status: 500 });
