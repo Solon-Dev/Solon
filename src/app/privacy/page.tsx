@@ -108,7 +108,7 @@ We do not store your source code. Code diffs are sent to Anthropic's Claude API 
           marginTop: '2rem',
         }}>
           <p style={{ color: '#475569', fontSize: '0.8rem', fontStyle: 'italic' }}>
-            TL;DR: We store your account info, repo connections, playbook settings, and review results to power your dashboard. We never store your actual source code. We don't sell your data. Ever.
+           TL;DR: We store your account info, repo connections, playbook settings, and review results to power your dashboard. We never store your actual source code. We don&apos;t sell your data. Ever.
           </p>
         </div>
       </div>
