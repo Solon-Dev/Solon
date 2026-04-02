@@ -44,20 +44,20 @@ export default function PrivacyPolicy() {
 - PR review results — summaries, playbook violations, edge cases, and suggested tests
 - Subscription and billing status (managed via Stripe)
 
-We do not store your source code. Code diffs are sent to Anthropic's Claude API for analysis and are not retained by Solon AI after the review is complete.`,
+We do not store your source code. Code diffs are sent to Anthropic&apos;s Claude API for analysis and are not retained by Solon AI after the review is complete.`,
           },
           {
             title: 'How It Works',
             content: `1. You sign in with GitHub OAuth — we receive your profile info and repo access
 2. You connect repos through the Solon dashboard
 3. When a PR opens on a connected repo, a webhook notifies Solon
-4. The code diff is sent to Anthropic's Claude API for analysis
+4. The code diff is sent to Anthropic&apos;s Claude API for analysis
 5. The review result is posted as a PR comment and saved to your Solon dashboard
 6. Your code is not stored — only the review output is retained`,
           },
           {
             title: 'Third-Party Services',
-            content: `• Anthropic Claude API — code diffs are sent for AI analysis. Subject to Anthropic's privacy policy.
+            content: `• Anthropic Claude API — code diffs are sent for AI analysis. Subject to Anthropic&apos;s privacy policy.
 - GitHub — OAuth authentication and webhook integration
 - Neon (Postgres) — stores user accounts, repo connections, playbook configs, and review results
 - Stripe — handles subscription billing. We do not store card details.
