@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     const payload = JSON.parse(body)
     const action = payload.action
 
-    if (action !== 'opened' && action !== 'synchronize') {
+    if (action !== 'opened' && action !== 'synchronize' && action !== 'reopened') {
       return NextResponse.json({ received: true, skipped: true })
     }
 
