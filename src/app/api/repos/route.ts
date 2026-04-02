@@ -102,6 +102,8 @@ export async function POST(request: Request) {
 
     const userId = (userResult[0] as { id: number }).id;
 
+    const accessToken = (session as { user?: { accessToken?: string } })?.user?.accessToken
+
     if (connect) {
       await db(
         `INSERT INTO repos (user_id, github_repo_id, name, full_name, is_active)
@@ -110,11 +112,19 @@ export async function POST(request: Request) {
          DO UPDATE SET is_active = true, name = EXCLUDED.name, full_name = EXCLUDED.full_name`,
         [userId, github_repo_id, name, full_name]
       );
+      // Register webhook on GitHub so PRs trigger Solon automatically
+      if (accessToken) {
+        await registerWebhook(full_name, accessToken)
+      }
     } else {
       await db(
         'UPDATE repos SET is_active = false WHERE user_id = $1 AND github_repo_id = $2',
         [userId, github_repo_id]
       );
+      // Remove webhook from GitHub when user disconnects repo
+      if (accessToken) {
+        await removeWebhook(full_name, accessToken)
+      }
     }
 
     const repos = await db(
@@ -126,5 +136,95 @@ export async function POST(request: Request) {
   } catch (err) {
     console.error('POST /api/repos error:', err);
     return NextResponse.json({ error: 'Database error' }, { status: 500 });
+  }
+}
+
+// Register a webhook on a GitHub repo when user connects it
+async function registerWebhook(
+  repoFullName: string,
+  accessToken: string
+): Promise<boolean> {
+  try {
+    const webhookUrl = `${process.env.NEXTAUTH_URL}/api/webhook`
+    const secret = process.env.GITHUB_WEBHOOK_SECRET || 'solon_webhook_secret_2026'
+
+    const res = await fetch(
+      `https://api.github.com/repos/${repoFullName}/hooks`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: 'web',
+          active: true,
+          events: ['pull_request'],
+          config: {
+            url: webhookUrl,
+            content_type: 'json',
+            secret: secret,
+            insecure_ssl: '0',
+          },
+        }),
+      }
+    )
+
+    if (res.status === 422) {
+      // Webhook already exists — that's fine
+      return true
+    }
+
+    if (!res.ok) {
+      console.error('Failed to register webhook:', await res.text())
+      return false
+    }
+
+    return true
+  } catch (err) {
+    console.error('registerWebhook error:', err)
+    return false
+  }
+}
+
+// Remove a webhook from a GitHub repo when user disconnects it
+async function removeWebhook(
+  repoFullName: string,
+  accessToken: string
+): Promise<void> {
+  try {
+    // Find existing Solon webhook
+    const webhookUrl = `${process.env.NEXTAUTH_URL}/api/webhook`
+
+    const listRes = await fetch(
+      `https://api.github.com/repos/${repoFullName}/hooks`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/vnd.github.v3+json',
+        },
+      }
+    )
+
+    if (!listRes.ok) return
+
+    const hooks = await listRes.json()
+    const solonHook = hooks.find((h: { config?: { url?: string }; id?: number }) => h.config?.url === webhookUrl)
+
+    if (!solonHook) return
+
+    await fetch(
+      `https://api.github.com/repos/${repoFullName}/hooks/${solonHook.id}`,
+      {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/vnd.github.v3+json',
+        },
+      }
+    )
+  } catch (err) {
+    console.error('removeWebhook error:', err)
   }
 }
