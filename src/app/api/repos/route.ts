@@ -172,7 +172,8 @@ async function getInstallationId(
     const data = await res.json()
     return data.id ?? null
   } catch (err) {
-    console.error('getInstallationId error:', err)
+    console.error('getInstallationId error:', err instanceof Error ? err.message : String(err))
+    console.error('getInstallationId stack:', err instanceof Error ? err.stack : '')
     return null
   }
 }
