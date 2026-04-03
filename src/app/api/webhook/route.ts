@@ -161,7 +161,7 @@ async function createAppJWT(appId: string, privateKey: string): Promise<string> 
   const payload = {
     iat: now - 60,
     exp: now + 600,
-    iss: appId,
+    iss: parseInt(appId, 10),
   }
 
   const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url')
