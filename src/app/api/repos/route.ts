@@ -105,26 +105,22 @@ export async function POST(request: Request) {
     const accessToken = (session as { user?: { accessToken?: string } })?.user?.accessToken
 
     if (connect) {
+      // Get the GitHub App installation ID for this repo
+      const installationId = await getInstallationId(full_name, accessToken || '')
+
       await db(
-        `INSERT INTO repos (user_id, github_repo_id, name, full_name, is_active)
-         VALUES ($1, $2, $3, $4, true)
+        `INSERT INTO repos (user_id, github_repo_id, name, full_name, is_active, installation_id)
+         VALUES ($1, $2, $3, $4, true, $5)
          ON CONFLICT (user_id, github_repo_id)
-         DO UPDATE SET is_active = true, name = EXCLUDED.name, full_name = EXCLUDED.full_name`,
-        [userId, github_repo_id, name, full_name]
+         DO UPDATE SET is_active = true, name = EXCLUDED.name, full_name = EXCLUDED.full_name, installation_id = EXCLUDED.installation_id`,
+        [userId, github_repo_id, name, full_name, installationId]
       );
-      // Register webhook on GitHub so PRs trigger Solon automatically
-      if (accessToken) {
-        await registerWebhook(full_name, accessToken)
-      }
     } else {
       await db(
         'UPDATE repos SET is_active = false WHERE user_id = $1 AND github_repo_id = $2',
         [userId, github_repo_id]
       );
-      // Remove webhook from GitHub when user disconnects repo
-      if (accessToken) {
-        await removeWebhook(full_name, accessToken)
-      }
+      // No webhook to remove — we use the GitHub App webhook
     }
 
     const repos = await db(
@@ -139,52 +135,30 @@ export async function POST(request: Request) {
   }
 }
 
-// Register a webhook on a GitHub repo when user connects it
-async function registerWebhook(
+// Get the GitHub App installation ID for a repo
+async function getInstallationId(
   repoFullName: string,
   accessToken: string
-): Promise<boolean> {
+): Promise<number | null> {
   try {
-    const webhookUrl = `${process.env.NEXTAUTH_URL}/api/webhook`
-    const secret = process.env.GITHUB_WEBHOOK_SECRET || 'solon_webhook_secret_2026'
-
     const res = await fetch(
-      `https://api.github.com/repos/${repoFullName}/hooks`,
+      `https://api.github.com/repos/${repoFullName}/installation`,
       {
-        method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
           Accept: 'application/vnd.github.v3+json',
-          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          name: 'web',
-          active: true,
-          events: ['pull_request'],
-          config: {
-            url: webhookUrl,
-            content_type: 'json',
-            secret: secret,
-            insecure_ssl: '0',
-          },
-        }),
       }
     )
-
-    if (res.status === 422) {
-      // Webhook already exists — that's fine
-      return true
-    }
-
     if (!res.ok) {
-      console.error('Failed to register webhook:', await res.text())
-      return false
+      console.error('Failed to get installation ID:', await res.text())
+      return null
     }
-
-    return true
+    const data = await res.json()
+    return data.id ?? null
   } catch (err) {
-    console.error('registerWebhook error:', err)
-    return false
+    console.error('getInstallationId error:', err)
+    return null
   }
 }
 

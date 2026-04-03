@@ -40,14 +40,23 @@ export async function POST(req: Request) {
     const prTitle = payload.pull_request?.title
     const baseSha = payload.pull_request?.base?.sha
     const headSha = payload.pull_request?.head?.sha
-    const installationId = payload.installation?.id
+    let installationId = payload.installation?.id
 
     if (!repoFullName || !prNumber || !baseSha || !headSha) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
+    // Fall back to DB-stored installation_id if not in payload
     if (!installationId) {
-      console.error('Missing installation.id in payload — event may not be from GitHub App')
+      const repoRow = await db(
+        'SELECT installation_id FROM repos WHERE full_name = $1 AND is_active = true LIMIT 1',
+        [repoFullName]
+      ) as Array<{ installation_id: number | null }>
+      installationId = repoRow[0]?.installation_id ?? undefined
+    }
+
+    if (!installationId) {
+      console.error('No installation_id found for repo:', repoFullName)
       return NextResponse.json({ error: 'Missing installation id' }, { status: 400 })
     }
 
