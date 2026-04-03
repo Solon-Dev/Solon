@@ -20,8 +20,11 @@ export default function PricingPage() {
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
+      } else {
+        alert('Checkout error: ' + (data.error || 'No URL returned'));
       }
     } catch (err) {
+      alert('Checkout error: ' + String(err));
       console.error('Checkout error:', err);
     } finally {
       setLoading(false);
