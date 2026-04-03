@@ -46,6 +46,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
+    if (!installationId) {
+      console.error('Missing installation.id in payload — event may not be from GitHub App')
+      return NextResponse.json({ error: 'Missing installation id' }, { status: 400 })
+    }
+
     const repoResult = await db(
       `SELECT r.id, r.full_name, u.github_id 
        FROM repos r 
