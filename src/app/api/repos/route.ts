@@ -135,23 +135,38 @@ export async function POST(request: Request) {
   }
 }
 
-// Get the GitHub App installation ID for a repo
+// Get the GitHub App installation ID for a repo using App JWT
 async function getInstallationId(
   repoFullName: string,
-  accessToken: string
+  _accessToken: string
 ): Promise<number | null> {
   try {
+    const appId = process.env.SOLON_APP_ID
+    const rawKey = process.env.SOLON_PRIVATE_KEY
+    if (!appId || !rawKey) return null
+
+    const privateKey = rawKey.replace(/\\n/g, '\n')
+    const { createSign } = await import('crypto')
+    const now = Math.floor(Date.now() / 1000)
+    const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url')
+    const payload = Buffer.from(JSON.stringify({ iat: now - 60, exp: now + 600, iss: appId })).toString('base64url')
+    const signingInput = `${header}.${payload}`
+    const sign = createSign('RSA-SHA256')
+    sign.update(signingInput)
+    const signature = sign.sign(privateKey, 'base64url')
+    const jwt = `${signingInput}.${signature}`
+
     const res = await fetch(
       `https://api.github.com/repos/${repoFullName}/installation`,
       {
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${jwt}`,
           Accept: 'application/vnd.github.v3+json',
         },
       }
     )
     if (!res.ok) {
-      console.error('Failed to get installation ID:', await res.text())
+      console.error('Failed to get installation ID:', res.status, await res.text())
       return null
     }
     const data = await res.json()
