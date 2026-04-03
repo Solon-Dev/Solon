@@ -39,15 +39,10 @@ describe('POST /api/analyze', () => {
 
     const response = await POST(req);
 
-    // Check response status
-    // @ts-expect-error - we mocked NextResponse to return the object directly for inspection
-    expect(response.status).toBe(500);
-
-    // @ts-expect-error - we mocked NextResponse
-    const body = response.body;
-
-    expect(body).toHaveProperty('error');
-    expect(body).not.toHaveProperty('stack');
+    const res = response as unknown as { status: number; body: Record<string, unknown> };
+    expect(res.status).toBe(500);
+    expect(res.body).toHaveProperty('error');
+    expect(res.body).not.toHaveProperty('stack');
   });
 
   it('should return 413 if diff is too large', async () => {
@@ -59,12 +54,9 @@ describe('POST /api/analyze', () => {
 
     const response = await POST(req);
 
-    // @ts-expect-error - we mocked NextResponse
-    expect(response.status).toBe(413);
-
-    // @ts-expect-error - we mocked NextResponse
-    const body = response.body;
-    expect(body).toHaveProperty('error');
-    expect(body.error).toContain('too large');
+    const res = response as unknown as { status: number; body: Record<string, unknown> };
+    expect(res.status).toBe(413);
+    expect(res.body).toHaveProperty('error');
+    expect(String(res.body.error)).toContain('too large');
   });
 });

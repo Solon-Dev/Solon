@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import Link from 'next/link';
 
@@ -36,8 +36,8 @@ export default async function DashboardPage() {
     connectedRepoCount = reposResult.length;
 
     if (reposResult.length > 0) {
-      const repoIds = reposResult.map((r: { id: number }) => r.id);
-      const placeholders = repoIds.map((_: number, i: number) => `$${i + 1}`).join(',');
+      const repoIds = (reposResult as { id: number }[]).map((r) => r.id);
+      const placeholders = repoIds.map((_, i) => `$${i + 1}`).join(',');
 
       const reviewsResult = await db(
         `SELECT rv.id, rv.pr_number, rv.pr_title, rv.status, rv.created_at,

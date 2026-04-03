@@ -248,10 +248,7 @@ export async function POST(request: Request): Promise<Response> {
     const MAX_DIFF_LENGTH = 500000;
     if (diff.length > MAX_DIFF_LENGTH) {
       return NextResponse.json(
-        {
-          error: `Diff too large. Maximum allowed length is ${MAX_DIFF_LENGTH} characters.`,
-          diagnostics
-        },
+        { error: `Diff too large. Maximum allowed length is ${MAX_DIFF_LENGTH} characters.` },
         { status: 413 }
       );
     }
