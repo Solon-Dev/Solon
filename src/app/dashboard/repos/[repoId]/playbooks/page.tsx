@@ -60,7 +60,7 @@ const PLAYBOOKS: Playbook[] = [
 ];
 
 export default function PlaybooksPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const params = useParams();
   const router = useRouter();
   const repoId = params?.repoId as string;

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import Link from 'next/link';
+import SignOutButton from '@/components/SignOutButton';
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -27,7 +28,7 @@ export default async function DashboardPage() {
   try {
     const githubId = session.user.githubId;
 
-    const reposResult = await db(
+    const reposResult = await db<{ id: number }>(
       `SELECT r.id FROM repos r
        JOIN users u ON u.id = r.user_id
        WHERE u.github_id = $1 AND r.is_active = true`,
@@ -36,8 +37,8 @@ export default async function DashboardPage() {
     connectedRepoCount = reposResult.length;
 
     if (reposResult.length > 0) {
-      const repoIds = (reposResult as { id: number }[]).map((r) => r.id);
-      const placeholders = repoIds.map((_, i) => `$${i + 1}`).join(',');
+      const repoIds = reposResult.map((r) => r.id);
+      const placeholders = repoIds.map((_: number, i: number) => `$${i + 1}`).join(',');
 
       const reviewsResult = await db(
         `SELECT rv.id, rv.pr_number, rv.pr_title, rv.status, rv.created_at,
@@ -102,6 +103,7 @@ export default async function DashboardPage() {
             )}
             {session.user.name}
           </span>
+          <SignOutButton />
         </div>
       </nav>
 

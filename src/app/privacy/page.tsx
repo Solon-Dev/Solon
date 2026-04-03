@@ -1,140 +1,130 @@
 import Link from 'next/link';
-import styles from '../Home.module.css';
 
 export default function PrivacyPolicy() {
   return (
-    <>
-      <header>
-        <nav className={styles.container} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-          <Link href="/" className={styles.logo}>🛡️ Solon AI</Link>
-          <Link href="/" className={styles.ctaButton}>Back to Home</Link>
-        </nav>
-      </header>
+    <div style={{ minHeight: '100vh', background: '#0a0f1e', color: '#e2e8f0' }}>
+      <nav style={{
+        background: 'rgba(10,15,30,0.92)', backdropFilter: 'blur(12px)',
+        borderBottom: '1px solid rgba(99,102,241,0.15)',
+        padding: '1rem 2rem', display: 'flex',
+        justifyContent: 'space-between', alignItems: 'center',
+      }}>
+        <Link href="/" style={{ color: '#fff', fontWeight: 700, fontSize: '1.1rem', textDecoration: 'none' }}>
+          🛡️ Solon AI
+        </Link>
+        <Link href="/" style={{
+          background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)',
+          color: '#a5b4fc', padding: '0.4rem 1rem', borderRadius: '0.4rem',
+          textDecoration: 'none', fontSize: '0.85rem',
+        }}>
+          ← Back to Home
+        </Link>
+      </nav>
 
-      <div style={{minHeight: '100vh', background: '#fff', padding: '80px 24px'}}>
-        <div style={{maxWidth: '800px', margin: '0 auto'}}>
-          <h1 style={{fontSize: '2.5rem', fontWeight: 700, marginBottom: '1rem', color: '#1e293b'}}>
-            Privacy Policy - Solon AI
-          </h1>
-          
-          <p style={{fontSize: '0.875rem', color: '#64748b', marginBottom: '3rem'}}>
-            Last Updated: November 27, 2025
-          </p>
+      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '4rem 2rem' }}>
+        <h1 style={{ fontSize: '2rem', fontWeight: 700, color: '#fff', marginBottom: '0.5rem' }}>
+          Privacy Policy
+        </h1>
+        <p style={{ color: '#64748b', fontSize: '0.875rem', marginBottom: '3rem' }}>
+          Last Updated: April 2, 2026
+        </p>
 
-          <section style={{marginBottom: '2.5rem'}}>
-            <h2 style={{fontSize: '1.5rem', fontWeight: 600, marginBottom: '1rem', color: '#1e293b'}}>Overview</h2>
-            <p style={{color: '#475569', lineHeight: 1.7}}>
-              Solon AI is a GitHub App that provides AI-powered code reviews. We are committed to protecting your privacy.
-            </p>
-          </section>
+        {[
+          {
+            title: 'Overview',
+            content: `Solon AI is a Team Standards Enforcement Dashboard that helps development teams define and enforce coding standards automatically on every pull request. We take your privacy seriously and are transparent about what data we collect and how we use it.`,
+          },
+          {
+            title: 'Data We Collect',
+            content: `When you sign in and use Solon AI, we collect and store the following:
 
-          <section style={{marginBottom: '2.5rem'}}>
-            <h2 style={{fontSize: '1.5rem', fontWeight: 600, marginBottom: '1rem', color: '#1e293b'}}>Data We Collect</h2>
-            <p style={{color: '#475569', lineHeight: 1.7}}>
-              <strong>None.</strong> Solon AI does not collect, store, or retain any user data.
-            </p>
-          </section>
+- GitHub profile information (name, email, avatar) obtained via GitHub OAuth
+- Connected repository names and IDs (not your code)
+- Playbook configurations you set for each repo
+- PR review results — summaries, playbook violations, edge cases, and suggested tests
+- Subscription and billing status (managed via Stripe)
 
-          <section style={{marginBottom: '2.5rem'}}>
-            <h2 style={{fontSize: '1.5rem', fontWeight: 600, marginBottom: '1rem', color: '#1e293b'}}>How It Works</h2>
-            <ol style={{color: '#475569', lineHeight: 1.8, paddingLeft: '1.5rem'}}>
-              <li>When you open a pull request, GitHub Actions triggers our service</li>
-              <li>Your code diff is sent directly from your repository to Anthropic&apos;s API using <strong>your own API key</strong></li>
-              <li>The AI analysis is returned and posted as a comment</li>
-              <li><strong>No data passes through or is stored by Solon AI</strong></li>
-            </ol>
-          </section>
-
-          <section style={{marginBottom: '2.5rem'}}>
-            <h2 style={{fontSize: '1.5rem', fontWeight: 600, marginBottom: '1rem', color: '#1e293b'}}>Third-Party Services</h2>
-            <ul style={{color: '#475569', lineHeight: 1.8, paddingLeft: '1.5rem'}}>
-              <li><strong>Anthropic Claude API:</strong> Code diffs are sent to Anthropic for analysis using your API key</li>
-              <li><strong>GitHub:</strong> Standard GitHub App permissions for reading PRs and posting comments</li>
-              <li><strong>Vercel:</strong> Hosts our API endpoint (stateless, no data storage)</li>
-            </ul>
-          </section>
-
-          <section style={{marginBottom: '2.5rem'}}>
-            <h2 style={{fontSize: '1.5rem', fontWeight: 600, marginBottom: '1rem', color: '#1e293b'}}>Your API Key</h2>
-            <ul style={{color: '#475569', lineHeight: 1.8, paddingLeft: '1.5rem'}}>
-              <li>Stored securely in <strong>your</strong> GitHub repository secrets</li>
-              <li>Never transmitted to or accessible by Solon AI</li>
-              <li>You maintain full control and can revoke anytime</li>
-            </ul>
-          </section>
-
-          <section style={{marginBottom: '2.5rem'}}>
-            <h2 style={{fontSize: '1.5rem', fontWeight: 600, marginBottom: '1rem', color: '#1e293b'}}>Data Security</h2>
-            <ul style={{color: '#475569', lineHeight: 1.8, paddingLeft: '1.5rem'}}>
-              <li>All communication uses HTTPS encryption</li>
-              <li>No databases, no logs, no data retention</li>
-              <li>Open source - audit our code yourself</li>
-            </ul>
-          </section>
-
-          <section style={{marginBottom: '2.5rem'}}>
-            <h2 style={{fontSize: '1.5rem', fontWeight: 600, marginBottom: '1rem', color: '#1e293b'}}>GDPR Compliance</h2>
-            <p style={{color: '#475569', lineHeight: 1.7, marginBottom: '0.5rem'}}>
-              We are GDPR compliant by design:
-            </p>
-            <ul style={{color: '#475569', lineHeight: 1.8, paddingLeft: '1.5rem'}}>
-              <li>No personal data collected</li>
-              <li>No data processing</li>
-              <li>No data retention</li>
-              <li>No cookies or tracking</li>
-            </ul>
-          </section>
-
-          <section style={{marginBottom: '2.5rem'}}>
-            <h2 style={{fontSize: '1.5rem', fontWeight: 600, marginBottom: '1rem', color: '#1e293b'}}>Your Rights</h2>
-            <p style={{color: '#475569', lineHeight: 1.7, marginBottom: '0.5rem'}}>
-              You control all data:
-            </p>
-            <ul style={{color: '#475569', lineHeight: 1.8, paddingLeft: '1.5rem'}}>
-              <li>Your code stays in your repository</li>
-              <li>Your API key stays in your secrets</li>
-              <li>Uninstall anytime with zero data to delete</li>
-            </ul>
-          </section>
-
-          <section style={{marginBottom: '2.5rem'}}>
-            <h2 style={{fontSize: '1.5rem', fontWeight: 600, marginBottom: '1rem', color: '#1e293b'}}>Changes to This Policy</h2>
-            <p style={{color: '#475569', lineHeight: 1.7}}>
-              We will update this page if our privacy practices change.
-            </p>
-          </section>
-
-          <section style={{marginBottom: '2.5rem'}}>
-            <h2 style={{fontSize: '1.5rem', fontWeight: 600, marginBottom: '1rem', color: '#1e293b'}}>Contact</h2>
-            <p style={{color: '#475569', lineHeight: 1.7, marginBottom: '0.5rem'}}>
-              For questions about this Privacy Policy or Solon AI:
-            </p>
-            <ul style={{listStyle: 'none', padding: 0, color: '#475569', lineHeight: 1.8}}>
-              <li><strong>Email:</strong> <a href="mailto:donta.ruffin@gmail.com" style={{color: '#2563eb', textDecoration: 'none'}}>donta.ruffin@gmail.com</a></li>
-              <li><strong>GitHub Issues:</strong> <a href="https://github.com/Solon-Dev/Solon/issues" style={{color: '#2563eb', textDecoration: 'none'}} target="_blank" rel="noopener noreferrer">https://github.com/Solon-Dev/Solon/issues</a></li>
-            </ul>
-          </section>
-
-          <div style={{borderTop: '1px solid #e2e8f0', paddingTop: '2rem', marginTop: '3rem'}}>
-            <p style={{fontSize: '0.875rem', color: '#64748b', fontStyle: 'italic'}}>
-              <strong>TL;DR:</strong> We don&apos;t collect or store anything. Your code goes from your repo → Anthropic&apos;s API (using your key) → back to your repo as a comment. That&apos;s it.
+We do not store your source code. Code diffs are sent to Anthropic&apos;s Claude API for analysis and are not retained by Solon AI after the review is complete.`,
+          },
+          {
+            title: 'How It Works',
+            content: `1. You sign in with GitHub OAuth — we receive your profile info and repo access
+2. You connect repos through the Solon dashboard
+3. When a PR opens on a connected repo, a webhook notifies Solon
+4. The code diff is sent to Anthropic&apos;s Claude API for analysis
+5. The review result is posted as a PR comment and saved to your Solon dashboard
+6. Your code is not stored — only the review output is retained`,
+          },
+          {
+            title: 'Third-Party Services',
+            content: `• Anthropic Claude API — code diffs are sent for AI analysis. Subject to Anthropic&apos;s privacy policy.
+- GitHub — OAuth authentication and webhook integration
+- Neon (Postgres) — stores user accounts, repo connections, playbook configs, and review results
+- Stripe — handles subscription billing. We do not store card details.
+- Vercel — hosts the Solon AI application`,
+          },
+          {
+            title: 'Data Security',
+            content: `• All data is transmitted over HTTPS
+- Database access is restricted and authenticated
+- We do not sell or share your data with third parties
+- Stripe handles all payment data — we never see your card number`,
+          },
+          {
+            title: 'Data Retention',
+            content: `• Your account data is retained while your account is active
+- Review history is retained to power your dashboard
+- You can request deletion of your account and associated data at any time by emailing us`,
+          },
+          {
+            title: 'GDPR',
+            content: `If you are in the EU or UK, you have the right to access, correct, or delete your personal data. Contact us at donta.ruffin@gmail.com to exercise these rights.`,
+          },
+          {
+            title: 'Changes to This Policy',
+            content: `We will update this page when our practices change. Continued use of Solon AI after changes constitutes acceptance.`,
+          },
+          {
+            title: 'Contact',
+            content: `Questions about this policy?\nEmail: donta.ruffin@gmail.com`,
+          },
+        ].map((section) => (
+          <div key={section.title} style={{ marginBottom: '2.5rem' }}>
+            <h2 style={{
+              fontSize: '1.1rem', fontWeight: 700, color: '#a5b4fc',
+              marginBottom: '0.75rem', paddingBottom: '0.5rem',
+              borderBottom: '1px solid rgba(99,102,241,0.2)',
+            }}>
+              {section.title}
+            </h2>
+            <p style={{ color: '#94a3b8', lineHeight: 1.8, whiteSpace: 'pre-line', fontSize: '0.9rem' }}>
+              {section.content}
             </p>
           </div>
+        ))}
+
+        <div style={{
+          borderTop: '1px solid rgba(99,102,241,0.2)', paddingTop: '2rem',
+          marginTop: '2rem',
+        }}>
+          <p style={{ color: '#475569', fontSize: '0.8rem', fontStyle: 'italic' }}>
+           TL;DR: We store your account info, repo connections, playbook settings, and review results to power your dashboard. We never store your actual source code. We don&apos;t sell your data. Ever.
+          </p>
         </div>
       </div>
 
-      <footer>
-        <div className={styles.container}>
-          <p>&copy; 2025 Solon AI. Built with ❤️ using Claude AI by Anthropic</p>
-          <p style={{marginTop: '0.5rem', fontSize: '0.875rem'}}>
-            <Link href="/privacy" style={{marginRight: '1rem', color: '#2563eb'}}>Privacy Policy</Link>
-            <span style={{marginRight: '1rem', color: '#cbd5e1'}}>•</span>
-            <Link href="/terms" style={{marginRight: '1rem', color: '#2563eb'}}>Terms of Service</Link>
-            <span style={{marginRight: '1rem', color: '#cbd5e1'}}>•</span>
-            <a href="https://github.com/Solon-Dev/Solon/issues" target="_blank" rel="noopener noreferrer" style={{color: '#2563eb'}}>Report Issues</a>
-          </p>
+      <footer style={{
+        borderTop: '1px solid rgba(255,255,255,0.06)',
+        padding: '2rem', textAlign: 'center',
+      }}>
+        <p style={{ color: '#334155', fontSize: '0.8rem' }}>
+          © 2026 Solon AI · Built with Claude AI by Anthropic
+        </p>
+        <div style={{ display: 'flex', gap: '1.5rem', justifyContent: 'center', marginTop: '0.5rem' }}>
+          <Link href="/privacy" style={{ color: '#475569', fontSize: '0.8rem', textDecoration: 'none' }}>Privacy</Link>
+          <Link href="/terms" style={{ color: '#475569', fontSize: '0.8rem', textDecoration: 'none' }}>Terms</Link>
         </div>
       </footer>
-    </>
-  );
+    </div>
+  )
 }

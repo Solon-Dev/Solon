@@ -2,7 +2,12 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { db } from '@/lib/db';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+export const dynamic = 'force-dynamic';
+
+function getStripe() {
+  if (!process.env.STRIPE_SECRET_KEY) throw new Error('STRIPE_SECRET_KEY is not set');
+  return new Stripe(process.env.STRIPE_SECRET_KEY);
+}
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -15,7 +20,7 @@ export async function POST(req: Request) {
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET!);
+    event = getStripe().webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET!);
   } catch (err) {
     console.error('Stripe webhook signature verification failed:', err);
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
