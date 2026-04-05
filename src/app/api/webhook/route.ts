@@ -141,14 +141,8 @@ async function getInstallationToken(installationId: number): Promise<string | nu
       return null
     }
 
-    console.log('[debug] appId:', appId)
-    console.log('[debug] installationId:', installationId)
-    console.log('[debug] key length:', privateKey.length)
-    console.log('[debug] key starts:', privateKey.slice(0, 27))
-    console.log('[debug] key ends:', privateKey.slice(-25))
 
     const jwt = await createAppJWT(appId, privateKey)
-    console.log('[debug] jwt created ok, length:', jwt.length)
 
     const res = await fetch(
       `https://api.github.com/app/installations/${installationId}/access_tokens`,
