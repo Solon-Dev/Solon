@@ -1,8 +1,10 @@
+import Link from 'next/link'
+
 export default function EthicsPage() {
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
       <nav style={{ background: '#1e293b', padding: '1rem 2rem' }}>
-        <a href="/" style={{ color: '#fff', fontWeight: 700, textDecoration: 'none' }}>🛡️ Solon AI</a>
+        <Link href="/" style={{ color: '#fff', fontWeight: 700, textDecoration: 'none' }}>🛡️ Solon AI</Link>
       </nav>
       <main style={{ maxWidth: '720px', margin: '0 auto', padding: '4rem 1.5rem' }}>
         <h1 style={{ fontSize: '2rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.5rem' }}>
