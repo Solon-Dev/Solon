@@ -104,6 +104,25 @@ export async function POST(req: Request) {
 
     await postPRComment(repoFullName, prNumber, review.formatted, token)
 
+    // Save review to dashboard
+    try {
+      await db(
+        `INSERT INTO reviews (repo_id, pr_number, pr_title, summary, playbook_results, edge_cases, unit_tests, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'pass')`,
+        [
+          repoResult[0].id,
+          prNumber,
+          prTitle ?? '',
+          review.summary ?? '',
+          JSON.stringify(review.playbookResults ?? {}),
+          JSON.stringify(review.edgeCases ?? []),
+          review.unitTests ?? '',
+        ]
+      )
+    } catch (err) {
+      console.error('Failed to save review to DB:', err)
+    }
+
     return NextResponse.json({ received: true, reviewed: true })
 
   } catch (err) {
