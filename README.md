@@ -1,42 +1,193 @@
-# Solon QA 🛡️
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/DontaRuffin/aegis-backend/actions)
-[![Version](https://img.shields.io/badge/version-1.0.0-blue)](https://github.com/DontaRuffin/aegis-backend)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+# 🛡️ Solon AI - AI-Powered Code Reviews for Every Pull Request
 
-> Your AI-powered QA engineer for every pull request. Stop nitpicking, start merging.
+**Solon AI** automatically reviews your pull requests using Claude AI, catching bugs, identifying edge cases, and generating unit tests before human review.
+
+> 🎉 **Free Forever** with Bring Your Own API Key (BYOK)
+
+[![Install on GitHub](https://img.shields.io/badge/Install-GitHub%20App-blue)](https://github.com/apps/solon-ai)
+[![Powered by Claude](https://img.shields.io/badge/Powered%20by-Claude%20AI-orange)](https://anthropic.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![GitHub Issues](https://img.shields.io/github/issues/Solon-Dev/Solon)](https://github.com/Solon-Dev/Solon/issues)
+[![GitHub Stars](https://img.shields.io/github/stars/Solon-Dev/Solon?style=social)](https://github.com/Solon-Dev/Solon)
 
 ---
 
-Solon is a GitHub App that uses large language models to automate the most tedious parts of code review. It acts as an intelligent, automated QA engineer that analyzes every pull request, helping your team ship higher-quality code, faster.
-
-
-
 ## ✨ Features
 
-* **🤖 AI-Generated Summaries:** Get a plain-English summary of the changes in every PR, making it easier to understand the intent at a glance.
-* **🤔 Edge Case Detection:** Solon suggests potential edge cases and blind spots in your logic, prompting you to consider scenarios you might have missed.
-* **🧪 Unit Test Generation:** Get boilerplate unit tests for your new logic, written in your project's testing framework. Copy, paste, and accelerate your test-driven development.
+- 🤖 **Automated PR Analysis** - Reviews every pull request automatically
+- 🐛 **Bug Detection** - Identifies logic errors and potential issues  
+- 🎯 **Edge Case Discovery** - Finds scenarios you might have missed
+- ✅ **Unit Test Generation** - Automatically generates Jest test suites
+- ⚡ **Fast Reviews** - Get feedback in 10-30 seconds
+- 💬 **Clear Summaries** - Plain-English explanations of changes
+- 🔒 **Your API Key, Your Control** - Pay only for what you use
 
-## 🚀 How it Works
+---
 
-1.  **Install the App:** Install the Solon GitHub App on your repositories from the GitHub Marketplace.
-2.  **Open a Pull Request:** Work as you normally would. When you open a PR, Solon gets to work.
-3.  **Get Instant Feedback:** Within moments, Solon will post a formatted, detailed analysis as a comment directly on your pull request.
+## 📚 Documentation
 
-## ⚙️ Installation
+Get started and learn how to optimize your workflow with Solon AI:
 
-The easiest way to get started is by installing Solon from the official GitHub Marketplace.
+- **[📖 Full Documentation](docs/README.md)** - Complete guide and overview
+- **[🚀 Getting Started](docs/getting-started.md)** - Your first code review in 5 minutes
+- **[✨ Best Practices](docs/best-practices.md)** - Optimize your workflow and review quality
 
-**➡️ [Install Solon from the GitHub Marketplace](https://github.com/marketplace/aegis-qa)** *(This link will be live once you submit the app to the marketplace)*
+---
 
-## 🔧 Configuration
+## 🚀 Setup (Takes 3 Minutes)
 
-For advanced configuration, you can add an `.aegis.yml` file to the root of your repository. *(Configuration options are planned for future versions)*
+### Step 1: Get Your Anthropic API Key (FREE $5 Credit)
 
-## 💬 Support & Feedback
+1. Visit [console.anthropic.com](https://console.anthropic.com)
+2. Sign up for a free account
+3. Go to **API Keys** section
+4. Click **Create Key**
+5. Copy your API key (starts with `sk-ant-...`)
 
-Have a bug report or a feature request? Please **[open an issue](https://github.com/DontaRuffin/aegis-backend/issues)** on this repository! Your feedback is critical to making Solon better.
+**💡 Anthropic gives you $5 free credit = ~80 free code reviews!**
 
-## 📜 License
+---
 
-This project is licensed under the MIT License - see the `LICENSE` file for details.
+### Step 2: Add API Key to Your Repository
+
+1. Go to your GitHub repository
+2. Click **Settings** → **Secrets and variables** → **Actions**
+3. Click **New repository secret**
+4. Name: `ANTHROPIC_API_KEY`
+5. Value: Paste your API key
+6. Click **Add secret**
+
+---
+
+### Step 3: Install Solon AI
+
+1. Visit [github.com/apps/solon-ai](https://github.com/apps/solon-ai)
+2. Click **Install**
+3. Select repositories to enable
+4. Click **Install**
+
+---
+
+### Step 4: Open a Pull Request
+
+That's it! Solon AI will automatically review your next PR.
+
+**Within 30 seconds, you'll see a comment from `solon-ai[bot]` with:**
+- 📝 Summary of changes
+- 🎯 Edge cases to consider
+- ✅ Suggested unit tests
+
+---
+
+## 💰 Pricing
+
+### Free Tier (BYOK) 🎉
+
+**Cost:** Pay Anthropic directly (~$0.03-0.06 per review)
+
+**What You Get:**
+- ✅ Unlimited PR reviews
+- ✅ All features included
+- ✅ No monthly fees
+- ✅ No vendor lock-in
+
+**Typical Monthly Costs:**
+- **Small team** (50 PRs): ~$2-3/month
+- **Medium team** (200 PRs): ~$10-12/month  
+- **Large team** (500 PRs): ~$25-30/month
+
+**Plus:** Get $5 free credit from Anthropic to start!
+
+---
+
+## 🛠️ Supported Languages
+
+Currently optimized for:
+- ✅ JavaScript
+- ✅ TypeScript
+
+**Coming Soon:** Python, Go, Java, Ruby
+
+---
+
+## 📸 Real Review Example
+```markdown
+🛡️ Solon AI Review
+
+Summary: The calculateDiscount function implements basic discount logic 
+but lacks validation for edge cases.
+
+Edge Cases:
+- Handling negative or zero prices
+- Handling discount percentages outside 0-100 range
+
+Suggested Unit Tests:
+describe('calculateDiscount', () => {
+  it('should calculate correct discount', () => {
+    expect(calculateDiscount(100, 20)).toEqual(80);
+  });
+  
+  it('should handle edge cases', () => {
+    expect(calculateDiscount(-100, 20)).toEqual(-80);
+  });
+});
+```
+
+---
+
+## 🔒 Security & Privacy
+
+- ✅ Your API key stays in YOUR repository secrets
+- ✅ Code diffs sent only to Anthropic's API (not stored by us)
+- ✅ No tracking, no analytics, no data collection
+
+**We never see your code or API key.**
+
+See [Privacy Policy](PRIVACY.md) | [Terms of Service](TERMS.md)
+
+---
+
+## ❓ FAQ
+
+**Why BYOK?**
+You control costs, privacy, and your API key. No monthly fees.
+
+**How much does it cost?**
+~$0.03-0.06 per review. 100 PRs/month = $3-6/month.
+
+**Can I use on private repos?**
+Yes! Works with both public and private repositories.
+
+---
+
+## 🤝 Contributing
+
+We love contributions! Solon AI is an open source project and we welcome:
+
+- 🐛 Bug reports and fixes
+- 💡 Feature requests and implementations
+- 📝 Documentation improvements
+- ✨ Code enhancements
+
+**Get started:**
+- Read our [Contributing Guide](CONTRIBUTING.md)
+- Check out [Good First Issues](https://github.com/Solon-Dev/Solon/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+- Review our [Code of Conduct](CONTRIBUTING.md#code-of-conduct)
+
+**Found a security issue?** Please report it responsibly via our [Security Policy](SECURITY.md).
+
+---
+
+## 🤝 Support
+
+- 🐛 [Report bugs](https://github.com/Solon-Dev/Solon/issues)
+- 💡 [Request features](https://github.com/Solon-Dev/Solon/issues)
+- 💬 [Join discussions](https://github.com/Solon-Dev/Solon/discussions)
+- ⭐ Star this repo!
+
+---
+
+**Built with ❤️ using Claude AI by Anthropic**
+
+[Install Solon AI](https://github.com/apps/solon-ai) | [Documentation](docs/README.md) | [Contributing](CONTRIBUTING.md) | [License](LICENSE) | [Security](SECURITY.md)
