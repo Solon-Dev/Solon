@@ -90,6 +90,9 @@ export default async function DashboardPage() {
           <Link href="/pricing" style={{ color: '#cbd5e1', textDecoration: 'none', fontSize: '0.9rem' }}>
             Upgrade
           </Link>
+          <Link href="/dashboard/settings" style={{ color: '#cbd5e1', textDecoration: 'none', fontSize: '0.9rem' }}>
+            Settings
+          </Link>
           <span style={{ color: '#94a3b8', fontSize: '0.875rem' }}>
             {session.user.image && (
               // eslint-disable-next-line @next/next/no-img-element
