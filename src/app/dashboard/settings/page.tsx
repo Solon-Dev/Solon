@@ -63,7 +63,7 @@ export default function SettingsPage() {
   "mcpServers": {
     "solon-ai": {
       "command": "npx",
-      "args": ["-y", "solon-mcp"],
+      "args": ["-y", "github:Solon-Dev/solon-mcp"],
       "env": {
         "SOLON_API_KEY": "${apiKey ?? 'your-api-key-here'}"
       }
