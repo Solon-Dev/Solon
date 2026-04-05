@@ -334,6 +334,7 @@ export default function LandingPage() {
         <div style={{ display: 'flex', gap: '1.5rem' }}>
           <Link href="/privacy" style={{ color: '#475569', fontSize: '0.875rem', textDecoration: 'none' }}>Privacy Policy</Link>
           <Link href="/terms" style={{ color: '#475569', fontSize: '0.875rem', textDecoration: 'none' }}>Terms of Service</Link>
+          <Link href="/ethics" style={{ color: '#475569', fontSize: '0.875rem', textDecoration: 'none' }}>Ethics</Link>
           <a href="mailto:support@solonreview.dev" style={{ color: '#475569', fontSize: '0.875rem', textDecoration: 'none' }}>Support</a>
         </div>
       </footer>
