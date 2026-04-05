@@ -35,9 +35,10 @@ export async function POST(req: Request) {
       const userId = sub.metadata?.userId;
 
       if (userId) {
+        const isPro = sub.status === 'active' || sub.status === 'trialing'
         await db(
           'UPDATE users SET subscription_status = $1 WHERE github_id = $2',
-          [sub.status, userId]
+          [isPro ? 'pro' : 'free', userId]
         );
       }
     }
