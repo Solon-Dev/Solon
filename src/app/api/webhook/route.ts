@@ -78,6 +78,37 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Auth failed' }, { status: 500 })
     }
 
+    // Check free tier limit (25 reviews/month)
+    const user = await db(
+      'SELECT u.subscription_status FROM users u JOIN repos r ON r.user_id = u.id WHERE r.id = $1',
+      [repoResult[0].id]
+    ) as Array<{ subscription_status: string }>
+
+    const isPro = user[0]?.subscription_status === 'pro'
+
+    if (!isPro) {
+      const now = new Date()
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+      const reviewCount = await db(
+        'SELECT COUNT(*) as count FROM reviews WHERE repo_id = $1 AND created_at >= $2',
+        [repoResult[0].id, monthStart]
+      ) as Array<{ count: string }>
+
+      if (parseInt(reviewCount[0].count) >= 25) {
+        await postPRComment(
+          repoFullName,
+          prNumber,
+          `## 🛡️ Solon AI
+
+You&apos;ve reached your **25 free reviews** for this month.
+
+Upgrade to Pro for unlimited reviews at [solonreview.dev/pricing](https://solonreview.dev/pricing) — $29/month, flat rate, no per-seat fees.`,
+          token
+        )
+        return NextResponse.json({ received: true, limited: true })
+      }
+    }
+
     const diff = await fetchDiff(repoFullName, baseSha, headSha, token)
     if (!diff) {
       console.error('Failed to fetch diff')

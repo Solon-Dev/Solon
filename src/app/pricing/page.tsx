@@ -59,7 +59,7 @@ export default function PricingPage() {
               $0<span style={{ fontSize: '1rem', color: '#64748b', fontWeight: 500 }}>/mo</span>
             </div>
             <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 2rem', color: '#475569', fontSize: '0.9rem', lineHeight: '2' }}>
-              <li>✅ 5 reviews / month</li>
+              <li>✅ 25 reviews / month</li>
               <li>✅ All playbooks (accessibility, security, best practices)</li>
               <li>✅ 1 connected repo</li>
               <li>✅ Full review history</li>
